@@ -1,0 +1,32 @@
+[
+  {
+    "key": "parking_domain_rules",
+    "name": "Parking Domain Rules",
+    "description": "Does the change enforce the rules of a parking lot, including the unhappy paths? A spot can never be double-booked for overlapping time windows, a vehicle only gets a spot that fits its type, cancelled or expired reservations free the spot, a reservation cannot end before it starts or start in the past, and charges are computed from the actual duration. Score high when these rules are enforced in the service layer and edge cases are handled explicitly. Score low when only the happy path works or behaviour contradicts the ticket payloads and status codes. Score neutral (70) when the change contains no booking, availability or pricing logic."
+  },
+  {
+    "key": "api_design",
+    "name": "API Design",
+    "description": "REST resources are nouns under /api, HTTP verbs match the action, and status codes are precise (201 with a Location on create, 204 on delete, 400 for validation, 404 for missing, 409 for a booking conflict). Requests and responses use DTOs, never JPA entities. List endpoints paginate. Errors share one JSON shape produced by a global exception handler. Endpoints appear in the OpenAPI/Swagger docs. Score neutral (70) when the change adds or modifies no endpoint."
+  },
+  {
+    "key": "data_modeling_and_integrity",
+    "name": "Data Modeling and Integrity",
+    "description": "Entities and relationships fit the domain (ParkingLot has floors and spots, a Reservation links a Vehicle to a ParkingSpot for a time window, a Payment belongs to a Reservation). Integrity is enforced in the database as well as in code: NOT NULL, unique and foreign key constraints, sensible indexes. Money uses BigDecimal, times are stored in UTC, and writes that must succeed together run in one @Transactional service method. Concurrency on bookings is handled with locking or a constraint, not only an if-check. Score neutral (70) when the change touches no entity, schema or transactional write."
+  },
+  {
+    "key": "security",
+    "name": "Security",
+    "description": "Endpoints that need a login require one, and role checks (ADMIN, OPERATOR, CUSTOMER) are enforced on the server, including ownership checks so a customer cannot read or cancel another customer's reservation. Passwords are hashed with BCrypt or Argon2. JWT secrets, database passwords and API keys come from environment variables and are never committed. All input is validated with Bean Validation and queries are parameterised. Stack traces and internal details never reach the client. Score neutral (70) when the change touches no endpoint, credential or user data."
+  },
+  {
+    "key": "testing",
+    "name": "Testing",
+    "description": "New behaviour arrives with tests that would fail if the behaviour broke. Service logic has unit tests covering the edge cases named in the ticket (overlap, unavailable spot, invalid input, unauthorised access). Controllers have at least one slice or integration test asserting status codes and response bodies. Tests are deterministic and pass in CI. Score low for tests that only assert not-null or that were written to mirror the implementation."
+  },
+  {
+    "key": "production_readiness",
+    "name": "Production Readiness",
+    "description": "Would this change survive outside a laptop? Configuration comes from application.yml and environment variables, not hard-coded values. Logging is at the right level, useful for debugging, and never prints passwords, tokens or card data. Schema changes ship as Flyway or Liquibase migrations once the team has adopted them. New endpoints are documented in OpenAPI. The app still builds and starts with Docker Compose. Score neutral (70) when the change touches none of these concerns."
+  }
+]
