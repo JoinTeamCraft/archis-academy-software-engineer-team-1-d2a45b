@@ -15,7 +15,6 @@ import org.springframework.stereotype.Component;
 public class DatabaseConnectionCheck implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseConnectionCheck.class);
-    private static final int VALIDATION_TIMEOUT_SECONDS = 5;
 
     private final DataSource dataSource;
 
@@ -24,14 +23,16 @@ public class DatabaseConnectionCheck implements ApplicationRunner {
     }
 
     @Override
-    public void run(ApplicationArguments args) throws SQLException {
+    public void run(ApplicationArguments args) {
+        // Hikari validates the connection before handing it out, so getting one is the check.
         try (Connection connection = dataSource.getConnection()) {
-            if (!connection.isValid(VALIDATION_TIMEOUT_SECONDS)) {
-                throw new IllegalStateException("Database connection is not valid");
-            }
             DatabaseMetaData meta = connection.getMetaData();
             log.info("Connected to {} {} at {}",
                     meta.getDatabaseProductName(), meta.getDatabaseProductVersion(), meta.getURL());
+        } catch (SQLException e) {
+            throw new IllegalStateException(
+                    "Cannot connect to the database. Check DB_URL, DB_USERNAME and DB_PASSWORD, "
+                            + "and that Postgres is running (docker compose up -d postgres).", e);
         }
     }
 }

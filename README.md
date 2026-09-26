@@ -56,6 +56,7 @@ All settings come from environment variables with local defaults. See [.env.exam
 | `DB_USERNAME` / `DB_PASSWORD` | `parking` / `parking` |
 | `DB_PORT` | `5432` (host port for the Docker Postgres) |
 | `DB_POOL_SIZE` | `10` |
+| `DB_CONNECTION_TIMEOUT_MS` | `10000` |
 | `JPA_DDL_AUTO` | `update` (switch to `validate` once you add Flyway) |
 | `PORT` | `8080` |
 | `JWT_SECRET` | none, add it when you build authentication |
@@ -65,6 +66,8 @@ All settings come from environment variables with local defaults. See [.env.exam
 - On startup the app logs `Connected to PostgreSQL <version> at <url>` and fails fast if the database is unreachable.
 - `/actuator/health` shows the database status under `components.db`.
 - Scripts in [db/init](db/init) run once, when the Postgres container starts with an empty volume. To rerun them: `docker compose down -v && docker compose up -d postgres`.
+- Tests use the in-memory H2 database from `src/test/resources/application.yml`, so they need no Postgres.
+- If JDK 21 is not installed, Gradle downloads it (foojay toolchain resolver in `settings.gradle`). CI installs 21 itself, so nothing is downloaded there.
 - Tables come from the JPA entities (`JPA_DDL_AUTO=update`) until Flyway is added (PLS-045).
 
 **Port 5432 already in use?** If a Postgres is already installed on your machine, the app connects to that one instead and fails with `password authentication failed for user "parking"`. Either stop the local service, or move the container to another port:
