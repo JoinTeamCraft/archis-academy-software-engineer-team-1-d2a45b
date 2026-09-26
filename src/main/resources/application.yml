@@ -14,9 +14,19 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
 
 server:
   port: ${PORT:8080}
+  error:
+    include-stacktrace: never
+    include-message: never
 
 management:
   endpoints:
@@ -25,5 +35,14 @@ management:
         include: health,info
 
 springdoc:
+  api-docs:
+    path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
+
+logging:
+  level:
+    root: INFO
+    tech.lokum.parkinglot: DEBUG
