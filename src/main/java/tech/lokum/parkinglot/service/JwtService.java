@@ -45,7 +45,12 @@ public class JwtService {
 
     // Generate legacy token (3 minutes)
     public String generateToken(String username) {
-        return generateAccessToken(username);
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 86400000))
+                .signWith(SignatureAlgorithm.HS256, secretKey)
+                .compact();
     }
 
     // Generate access token valid for 15 minutes
