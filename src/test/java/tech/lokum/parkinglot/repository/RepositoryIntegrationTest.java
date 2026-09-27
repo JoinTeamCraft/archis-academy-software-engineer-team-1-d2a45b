@@ -61,6 +61,13 @@ class RepositoryIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        paymentRepository.deleteAllInBatch();
+        reservationRepository.deleteAllInBatch();
+        parkingSpotRepository.deleteAllInBatch();
+        vehicleRepository.deleteAllInBatch();
+        parkingLotRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
+
         customer = userRepository.save(new User("john.doe@example.com", "hashpass", "John Doe", "555-1234", Role.CUSTOMER));
         vehicle = vehicleRepository.save(new Vehicle("ABC-9876", VehicleType.CAR, "Honda", "Civic", "Blue", customer));
 
@@ -97,7 +104,7 @@ class RepositoryIntegrationTest {
     @Test
     @DisplayName("ParkingSpotRepository should find available spots excluding overlapping reservations")
     void testParkingSpotRepositoryAvailability() {
-        Instant now = Instant.now().plus(1, ChronoUnit.HOURS);
+        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS).plus(1, ChronoUnit.HOURS);
         Instant start = now;
         Instant end = now.plus(2, ChronoUnit.HOURS);
 
@@ -120,25 +127,27 @@ class RepositoryIntegrationTest {
     @Test
     @DisplayName("ReservationRepository should detect overlapping reservations and exclude cancelled/adjacent ones")
     void testReservationOverlapDetection() {
-        Instant base = Instant.now().plus(5, ChronoUnit.HOURS);
+        ParkingSpot overlapSpot = parkingSpotRepository.save(new ParkingSpot("OV-99", 1, VehicleType.CAR, lot));
+
+        Instant base = Instant.now().truncatedTo(ChronoUnit.SECONDS).plus(5, ChronoUnit.HOURS);
         Instant resStart = base;
         Instant resEnd = base.plus(2, ChronoUnit.HOURS);
 
         Reservation existingRes = reservationRepository.save(new Reservation(
-            customer, vehicle, spot1, resStart, resEnd, BigDecimal.valueOf(20.00), ReservationStatus.CONFIRMED
+            customer, vehicle, overlapSpot, resStart, resEnd, BigDecimal.valueOf(20.00), ReservationStatus.CONFIRMED
         ));
 
         Set<ReservationStatus> excluded = Set.of(ReservationStatus.CANCELLED, ReservationStatus.EXPIRED);
 
         // Overlapping request: [resStart + 30m, resEnd + 30m]
         boolean hasOverlap = reservationRepository.hasOverlappingReservations(
-            spot1.getId(), resStart.plus(30, ChronoUnit.MINUTES), resEnd.plus(30, ChronoUnit.MINUTES), excluded
+            overlapSpot.getId(), resStart.plus(30, ChronoUnit.MINUTES), resEnd.plus(30, ChronoUnit.MINUTES), excluded
         );
         assertThat(hasOverlap).isTrue();
 
         // Adjacent request before: [resStart - 1h, resStart] -> NO overlap
         boolean adjacentBefore = reservationRepository.hasOverlappingReservations(
-            spot1.getId(), resStart.minus(1, ChronoUnit.HOURS), resStart, excluded
+            overlapSpot.getId(), resStart.minus(1, ChronoUnit.HOURS), resStart, excluded
         );
         assertThat(adjacentBefore).isFalse();
 
@@ -147,7 +156,7 @@ class RepositoryIntegrationTest {
         reservationRepository.save(existingRes);
 
         boolean overlapAfterCancellation = reservationRepository.hasOverlappingReservations(
-            spot1.getId(), resStart.plus(30, ChronoUnit.MINUTES), resEnd.plus(30, ChronoUnit.MINUTES), excluded
+            overlapSpot.getId(), resStart.plus(30, ChronoUnit.MINUTES), resEnd.plus(30, ChronoUnit.MINUTES), excluded
         );
         assertThat(overlapAfterCancellation).isFalse();
     }

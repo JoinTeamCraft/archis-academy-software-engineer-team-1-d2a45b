@@ -68,21 +68,16 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     );
 
     /**
-     * Quick boolean check to determine if any overlapping active reservation exists.
+     * Checks if any active reservation exists that overlaps with the requested interval.
      */
-    @Query("""
-        SELECT COUNT(r) > 0 FROM Reservation r
-        WHERE r.parkingSpot.id = :spotId
-          AND r.status NOT IN (:excludedStatuses)
-          AND r.startTime < :endTime
-          AND r.endTime > :startTime
-    """)
-    boolean hasOverlappingReservations(
-        @Param("spotId") Long spotId,
-        @Param("startTime") Instant startTime,
-        @Param("endTime") Instant endTime,
-        @Param("excludedStatuses") Collection<ReservationStatus> excludedStatuses
-    );
+    default boolean hasOverlappingReservations(
+        Long spotId,
+        Instant startTime,
+        Instant endTime,
+        Collection<ReservationStatus> excludedStatuses
+    ) {
+        return !findOverlappingReservations(spotId, startTime, endTime, excludedStatuses).isEmpty();
+    }
 
     /**
      * Finds reservations that have expired (pending or confirmed but end_time is before the given timestamp).
