@@ -61,6 +61,13 @@ class RepositoryIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        paymentRepository.deleteAllInBatch();
+        reservationRepository.deleteAllInBatch();
+        parkingSpotRepository.deleteAllInBatch();
+        vehicleRepository.deleteAllInBatch();
+        parkingLotRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
+
         customer = userRepository.save(new User("john.doe@example.com", "hashpass", "John Doe", "555-1234", Role.CUSTOMER));
         vehicle = vehicleRepository.save(new Vehicle("ABC-9876", VehicleType.CAR, "Honda", "Civic", "Blue", customer));
 
