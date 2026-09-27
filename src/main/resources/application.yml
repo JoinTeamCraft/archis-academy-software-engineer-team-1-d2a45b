@@ -17,10 +17,6 @@ spring:
           batch_size: 25
         order_inserts: true
         order_updates: true
-  jackson:
-    serialization:
-      write-dates-as-timestamps: false
-    time-zone: UTC
 
 server:
   port: ${PORT:8080}
