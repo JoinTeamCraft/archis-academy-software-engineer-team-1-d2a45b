@@ -41,7 +41,17 @@ public interface ParkingLotRepository extends JpaRepository<ParkingLot, Long> {
     Optional<ParkingLot> findByIdAndActiveTrue(Long id);
 
     /**
-     * Finds active parking lots matching a location keyword.
+     * Finds active parking lots matching a name keyword (case-insensitive).
+     */
+    List<ParkingLot> findByNameContainingIgnoreCaseAndActiveTrue(String name);
+
+    /**
+     * Finds active parking lots matching a location keyword (case-insensitive).
      */
     List<ParkingLot> findByLocationContainingIgnoreCaseAndActiveTrue(String location);
+
+    /**
+     * Finds active parking lots matching a location keyword with pagination.
+     */
+    Page<ParkingLot> findByLocationContainingIgnoreCaseAndActiveTrue(String location, Pageable pageable);
 }

@@ -1,5 +1,7 @@
 package tech.lokum.parkinglot.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,6 +12,7 @@ import tech.lokum.parkinglot.entity.ReservationStatus;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Spring Data JPA repository for {@link Reservation} entities.
@@ -17,14 +20,38 @@ import java.util.List;
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
+    /**
+     * Finds all reservations made by a user.
+     */
     List<Reservation> findByUserId(Long userId);
 
+    /**
+     * Retrieves a paginated list of reservations for a specific user.
+     */
+    Page<Reservation> findByUserId(Long userId, Pageable pageable);
+
+    /**
+     * Finds a reservation by its ID and user ID to enforce customer data ownership.
+     */
+    Optional<Reservation> findByIdAndUserId(Long id, Long userId);
+
+    /**
+     * Finds reservations for a specific parking spot.
+     */
     List<Reservation> findByParkingSpotId(Long parkingSpotId);
 
+    /**
+     * Finds all reservations matching a particular lifecycle status.
+     */
     List<Reservation> findByStatus(ReservationStatus status);
 
     /**
-     * Finds existing active reservations for a spot that overlap with the requested time interval.
+     * Retrieves a paginated list of reservations by status.
+     */
+    Page<Reservation> findByStatus(ReservationStatus status, Pageable pageable);
+
+    /**
+     * Finds all active reservations for a given spot that overlap with the requested time interval.
      */
     @Query("""
         SELECT r FROM Reservation r
@@ -39,4 +66,26 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
         @Param("endTime") Instant endTime,
         @Param("excludedStatuses") Collection<ReservationStatus> excludedStatuses
     );
+
+    /**
+     * Quick boolean check to determine if any overlapping active reservation exists.
+     */
+    @Query("""
+        SELECT COUNT(r) > 0 FROM Reservation r
+        WHERE r.parkingSpot.id = :spotId
+          AND r.status NOT IN (:excludedStatuses)
+          AND r.startTime < :endTime
+          AND r.endTime > :startTime
+    """)
+    boolean hasOverlappingReservations(
+        @Param("spotId") Long spotId,
+        @Param("startTime") Instant startTime,
+        @Param("endTime") Instant endTime,
+        @Param("excludedStatuses") Collection<ReservationStatus> excludedStatuses
+    );
+
+    /**
+     * Finds reservations that have expired (pending or confirmed but end_time is before the given timestamp).
+     */
+    List<Reservation> findByStatusAndEndTimeBefore(ReservationStatus status, Instant beforeTime);
 }
