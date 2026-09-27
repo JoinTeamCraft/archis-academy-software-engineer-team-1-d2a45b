@@ -127,25 +127,27 @@ class RepositoryIntegrationTest {
     @Test
     @DisplayName("ReservationRepository should detect overlapping reservations and exclude cancelled/adjacent ones")
     void testReservationOverlapDetection() {
+        ParkingSpot overlapSpot = parkingSpotRepository.save(new ParkingSpot("OV-99", 1, VehicleType.CAR, lot));
+
         Instant base = Instant.now().plus(5, ChronoUnit.HOURS);
         Instant resStart = base;
         Instant resEnd = base.plus(2, ChronoUnit.HOURS);
 
         Reservation existingRes = reservationRepository.save(new Reservation(
-            customer, vehicle, spot1, resStart, resEnd, BigDecimal.valueOf(20.00), ReservationStatus.CONFIRMED
+            customer, vehicle, overlapSpot, resStart, resEnd, BigDecimal.valueOf(20.00), ReservationStatus.CONFIRMED
         ));
 
         Set<ReservationStatus> excluded = Set.of(ReservationStatus.CANCELLED, ReservationStatus.EXPIRED);
 
         // Overlapping request: [resStart + 30m, resEnd + 30m]
         boolean hasOverlap = reservationRepository.hasOverlappingReservations(
-            spot1.getId(), resStart.plus(30, ChronoUnit.MINUTES), resEnd.plus(30, ChronoUnit.MINUTES), excluded
+            overlapSpot.getId(), resStart.plus(30, ChronoUnit.MINUTES), resEnd.plus(30, ChronoUnit.MINUTES), excluded
         );
         assertThat(hasOverlap).isTrue();
 
         // Adjacent request before: [resStart - 1h, resStart] -> NO overlap
         boolean adjacentBefore = reservationRepository.hasOverlappingReservations(
-            spot1.getId(), resStart.minus(1, ChronoUnit.HOURS), resStart, excluded
+            overlapSpot.getId(), resStart.minus(1, ChronoUnit.HOURS), resStart, excluded
         );
         assertThat(adjacentBefore).isFalse();
 
@@ -154,7 +156,7 @@ class RepositoryIntegrationTest {
         reservationRepository.save(existingRes);
 
         boolean overlapAfterCancellation = reservationRepository.hasOverlappingReservations(
-            spot1.getId(), resStart.plus(30, ChronoUnit.MINUTES), resEnd.plus(30, ChronoUnit.MINUTES), excluded
+            overlapSpot.getId(), resStart.plus(30, ChronoUnit.MINUTES), resEnd.plus(30, ChronoUnit.MINUTES), excluded
         );
         assertThat(overlapAfterCancellation).isFalse();
     }
