@@ -1,29 +1,59 @@
 spring:
   application:
-    name: parking-lot-system
+    name: spring-security
+
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/parking_lot}
-    username: ${DB_USERNAME:parking}
-    password: ${DB_PASSWORD:parking}
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/parking_lot
+    username: postgres
+    password: 1234
+
   jpa:
-    # Fine for a hackathon. Switch to validate once you add Flyway (PLS-045).
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
-    open-in-view: false
+      ddl-auto: update
+    show-sql: true
+    defer-datasource-initialization: true
     properties:
       hibernate:
-        jdbc:
-          time_zone: UTC
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  sql:
+    init:
+      mode: always
+      platform: postgres
 
 server:
-  port: ${PORT:8080}
+  port: 8080
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
 
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
+
+
+# spring:
+#   application:
+#     name: parking-lot-system
+#   datasource:
+#     url: ${DB_URL:jdbc:postgresql://localhost:5432/parking_lot}
+#     username: ${DB_USERNAME:parking}
+#     password: ${DB_PASSWORD:parking}
+#   jpa:
+#     # Fine for a hackathon. Switch to validate once you add Flyway (PLS-045).
+#     hibernate:
+#       ddl-auto: ${JPA_DDL_AUTO:update}
+#     open-in-view: false
+#     properties:
+#       hibernate:
+#         jdbc:
+#           time_zone: UTC
+
+# server:
+#   port: ${PORT:8080}
+
+# management:
+#   endpoints:
+#     web:
+#       exposure:
+#         include: health,info
+
+# springdoc:
+#   swagger-ui:
+#     path: /swagger-ui.html
