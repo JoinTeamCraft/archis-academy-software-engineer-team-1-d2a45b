@@ -1,12 +1,37 @@
 package tech.lokum.parkinglot.dto;
 
+import org.springframework.stereotype.Component;
 import tech.lokum.parkinglot.entity.*;
 
+@Component
 public class Mapper {
+    public ParkingLot mapToEntity(ParkingLotDto dto) {
+        if (dto == null) {
+            return null;
+        }
+        ParkingLot parkingLot = new ParkingLot();
+        parkingLot.setName(dto.getName());
+        parkingLot.setAddress(dto.getAddress());
+        return parkingLot;
+    }
+
+    public ParkingLotDto mapToDto(ParkingLot parkingLot) {
+        if (parkingLot == null) {
+            return null;
+        }
+        ParkingLotDto dto = new ParkingLotDto();
+        dto.setId(parkingLot.getId());
+        dto.setName(parkingLot.getName());
+        dto.setAddress(parkingLot.getAddress());
+        return dto;
+    }
+
     public ParkingSpot mapToEntity(ParkingSpotDto dto, ParkingLot parkingLot) {
+        if (dto == null) {
+            return null;
+        }
         ParkingSpot parkingSpot = new ParkingSpot();
 
-        parkingSpot.setId(dto.getId());
         parkingSpot.setSpotNumber(dto.getSpotNumber());
         parkingSpot.setType(dto.getType());
         parkingSpot.setActive(dto.isActive());
@@ -14,7 +39,11 @@ public class Mapper {
 
         return parkingSpot;
     }
+
     public ParkingSpotDto mapToDto(ParkingSpot parkingSpot) {
+        if (parkingSpot == null) {
+            return null;
+        }
         ParkingSpotDto dto = new ParkingSpotDto();
 
         dto.setId(parkingSpot.getId());
@@ -29,6 +58,9 @@ public class Mapper {
         return dto;
     }
     public PaymentDto mapToDto(Payment payment) {
+        if (payment == null) {
+            return null;
+        }
         PaymentDto dto = new PaymentDto();
 
         dto.setId(payment.getId());
@@ -43,9 +75,11 @@ public class Mapper {
         return dto;
     }
     public Payment mapToEntity(PaymentDto dto, Reservation reservation) {
+        if (dto == null) {
+            return null;
+        }
         Payment payment = new Payment();
 
-        payment.setId(dto.getId());
         payment.setAmount(dto.getAmount());
         payment.setStatus(dto.getStatus());
         payment.setPaidAt(dto.getPaidAt());
@@ -54,6 +88,9 @@ public class Mapper {
         return payment;
     }
     public UserDto mapToDto(User user) {
+        if (user == null) {
+            return null;
+        }
 
         UserDto dto = new UserDto();
 
@@ -65,10 +102,12 @@ public class Mapper {
         return dto;
     }
     public User mapToEntity(UserDto dto) {
+        if (dto == null) {
+            return null;
+        }
 
         User user = new User();
 
-        user.setId(dto.getId());
         user.setName(dto.getName());
         user.setEmail(dto.getEmail());
         user.setRole(dto.getRole());

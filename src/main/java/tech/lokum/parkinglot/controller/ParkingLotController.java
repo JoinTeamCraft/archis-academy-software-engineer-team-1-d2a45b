@@ -1,12 +1,10 @@
 package tech.lokum.parkinglot.controller;
 
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tech.lokum.parkinglot.dto.ParkingLotDto;
-import tech.lokum.parkinglot.entity.ParkingLot;
 import tech.lokum.parkinglot.service.ParkingLotService;
 
 import java.util.List;
@@ -19,10 +17,10 @@ public class ParkingLotController {
     private final ParkingLotService parkingLotService;
 
     @PostMapping
-    public ResponseEntity<ParkingLot> createParkingLot(
+    public ResponseEntity<ParkingLotDto> createParkingLot(
             @RequestBody ParkingLotDto request) {
 
-        ParkingLot parkingLot = parkingLotService.create(request);
+        ParkingLotDto parkingLot = parkingLotService.create(request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -30,12 +28,12 @@ public class ParkingLotController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ParkingLot>> getAllParkingLots() {
+    public ResponseEntity<List<ParkingLotDto>> getAllParkingLots() {
         return ResponseEntity.ok(parkingLotService.getAll());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ParkingLot> getParkingLotById(
+    public ResponseEntity<ParkingLotDto> getParkingLotById(
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
@@ -43,11 +41,12 @@ public class ParkingLotController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ParkingLot> updateParkingLot(@PathVariable Long id, @RequestBody ParkingLotDto request) {
+    public ResponseEntity<ParkingLotDto> updateParkingLot(@PathVariable Long id, @RequestBody ParkingLotDto request) {
 
         return ResponseEntity.ok(
                 parkingLotService.update(id, request));
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteParkingLot(@PathVariable Long id) {
 
@@ -55,6 +54,7 @@ public class ParkingLotController {
 
         return ResponseEntity.noContent().build();
     }
+
     @GetMapping("/{id}/available-spots")
     public ResponseEntity<Long> getAvailableSpots(@PathVariable Long id) {
 

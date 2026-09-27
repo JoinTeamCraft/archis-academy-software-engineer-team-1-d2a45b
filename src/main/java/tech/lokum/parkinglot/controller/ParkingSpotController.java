@@ -6,7 +6,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import tech.lokum.parkinglot.dto.ParkingSpotDto;
-import tech.lokum.parkinglot.entity.ParkingSpot;
 import tech.lokum.parkinglot.service.ParkingSpotService;
 
 @RestController
@@ -17,10 +16,10 @@ public class ParkingSpotController {
     private final ParkingSpotService parkingSpotService;
 
     @PostMapping
-    public ResponseEntity<ParkingSpot> createParkingSpot(
+    public ResponseEntity<ParkingSpotDto> createParkingSpot(
             @RequestBody ParkingSpotDto request) {
 
-        ParkingSpot parkingSpot = parkingSpotService.create(request);
+        ParkingSpotDto parkingSpot = parkingSpotService.create(request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

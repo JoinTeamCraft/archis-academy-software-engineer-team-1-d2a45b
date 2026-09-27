@@ -16,7 +16,7 @@ import java.util.List;
 public class ParkingLot {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
@@ -24,11 +24,9 @@ public class ParkingLot {
     @OneToMany(mappedBy = "parkingLot")
     private List<ParkingSpot> parkingSpots;
 
-
     private String address;
 
-//    @ManyToOne
-//    private User operator;
-
+    // @ManyToOne
+    // private User operator;
 
 }
