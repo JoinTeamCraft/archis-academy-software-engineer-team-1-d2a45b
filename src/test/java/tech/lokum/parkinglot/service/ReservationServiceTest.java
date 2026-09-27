@@ -186,7 +186,6 @@ class ReservationServiceTest {
 
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(vehicleRepository.findById(otherCar.getId())).thenReturn(Optional.of(otherCar));
-        when(parkingSpotRepository.findById(spot.getId())).thenReturn(Optional.of(spot));
 
         assertThatThrownBy(() -> reservationService.createReservation(request))
             .isInstanceOf(BadRequestException.class)

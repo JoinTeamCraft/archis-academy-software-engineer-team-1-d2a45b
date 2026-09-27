@@ -1,9 +1,14 @@
 package tech.lokum.parkinglot.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import tech.lokum.parkinglot.entity.ReservationStatus;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 
 /**
  * DTO payload for modifying an existing parking reservation.
@@ -25,4 +30,36 @@ public record UpdateReservationRequest(
     @Schema(description = "Updated reservation lifecycle status", example = "CANCELLED")
     ReservationStatus status
 ) {
+    @JsonCreator
+    public static UpdateReservationRequest create(
+        @JsonProperty("startTime") String startTime,
+        @JsonProperty("endTime") String endTime,
+        @JsonProperty("parkingSpotId") Long parkingSpotId,
+        @JsonProperty("vehicleId") Long vehicleId,
+        @JsonProperty("status") ReservationStatus status
+    ) {
+        return new UpdateReservationRequest(
+            parseFlexibleInstant(startTime),
+            parseFlexibleInstant(endTime),
+            parkingSpotId,
+            vehicleId,
+            status
+        );
+    }
+
+    private static Instant parseFlexibleInstant(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        text = text.trim();
+        try {
+            return Instant.parse(text);
+        } catch (DateTimeParseException e) {
+            try {
+                return LocalDateTime.parse(text).toInstant(ZoneOffset.UTC);
+            } catch (DateTimeParseException ex) {
+                throw new IllegalArgumentException(String.format("Invalid timestamp format '%s'. Expected ISO-8601 string.", text));
+            }
+        }
+    }
 }

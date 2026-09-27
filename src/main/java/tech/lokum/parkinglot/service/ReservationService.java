@@ -73,19 +73,27 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse createReservation(CreateReservationRequest request) {
-        log.info("Creating reservation for user {} with vehicle {} on spot {}",
-            request.userId(), request.vehicleId(), request.parkingSpotId());
-
-        User user = userRepository.findById(request.userId())
-            .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.userId()));
+        log.info("Creating reservation for vehicle {} on spot {}",
+            request.vehicleId(), request.parkingSpotId());
 
         Vehicle vehicle = vehicleRepository.findById(request.vehicleId())
             .orElseThrow(() -> new ResourceNotFoundException("Vehicle", "id", request.vehicleId()));
 
+        User user;
+        if (request.userId() != null) {
+            user = userRepository.findById(request.userId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.userId()));
+            validateVehicleOwnership(user, vehicle);
+        } else {
+            user = vehicle.getUser();
+            if (user == null) {
+                throw new BadRequestException(String.format("Vehicle '%s' is not associated with any registered user", vehicle.getLicensePlate()));
+            }
+        }
+
         ParkingSpot spot = parkingSpotRepository.findById(request.parkingSpotId())
             .orElseThrow(() -> new ResourceNotFoundException("ParkingSpot", "id", request.parkingSpotId()));
 
-        validateVehicleOwnership(user, vehicle);
         validateVehicleSpotCompatibility(spot, vehicle);
         validateReservationTimeWindow(request.startTime(), request.endTime());
 
