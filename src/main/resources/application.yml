@@ -8,6 +8,13 @@ spring:
     username: postgres
     password: 1234
 
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/parking_lot}
+    username: ${DB_USERNAME:parking}
+    password: ${DB_PASSWORD:parking}
+    hikari:
+      pool-name: parking-lot-pool
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:10000}
   jpa:
     hibernate:
       ddl-auto: update
@@ -53,6 +60,15 @@ server:
 #     web:
 #       exposure:
 #         include: health,info
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      # Shows "db": {"status": "UP"} without leaking connection details.
+      show-components: always
 
 # springdoc:
 #   swagger-ui:
