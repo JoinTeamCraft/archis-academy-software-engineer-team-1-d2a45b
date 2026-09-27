@@ -4,13 +4,9 @@ spring:
 
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/parking_lot
-    username: postgres
-    password: 1234
-
     url: ${DB_URL:jdbc:postgresql://localhost:5432/parking_lot}
-    username: ${DB_USERNAME:parking}
-    password: ${DB_PASSWORD:parking}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:1234}
     hikari:
       pool-name: parking-lot-pool
       maximum-pool-size: ${DB_POOL_SIZE:10}
@@ -32,34 +28,6 @@ spring:
 server:
   port: 8080
 
-
-
-
-# spring:
-#   application:
-#     name: parking-lot-system
-#   datasource:
-#     url: ${DB_URL:jdbc:postgresql://localhost:5432/parking_lot}
-#     username: ${DB_USERNAME:parking}
-#     password: ${DB_PASSWORD:parking}
-#   jpa:
-#     # Fine for a hackathon. Switch to validate once you add Flyway (PLS-045).
-#     hibernate:
-#       ddl-auto: ${JPA_DDL_AUTO:update}
-#     open-in-view: false
-#     properties:
-#       hibernate:
-#         jdbc:
-#           time_zone: UTC
-
-# server:
-#   port: ${PORT:8080}
-
-# management:
-#   endpoints:
-#     web:
-#       exposure:
-#         include: health,info
 management:
   endpoints:
     web:
@@ -67,9 +35,4 @@ management:
         include: health,info
   endpoint:
     health:
-      # Shows "db": {"status": "UP"} without leaking connection details.
       show-components: always
-
-# springdoc:
-#   swagger-ui:
-#     path: /swagger-ui.html
