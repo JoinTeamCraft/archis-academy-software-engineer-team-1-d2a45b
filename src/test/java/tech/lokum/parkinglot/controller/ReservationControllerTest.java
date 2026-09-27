@@ -55,24 +55,12 @@ class ReservationControllerTest {
 
         ReservationResponse created = new ReservationResponse(
             501L,
-            1L,
-            "john@example.com",
-            "John Doe",
             201L,
-            "ABC-1234",
-            VehicleType.CAR,
             101L,
-            "A-101",
-            1,
-            1L,
-            "Downtown Central Garage",
             start,
             end,
-            null,
-            null,
             BigDecimal.valueOf(20.00),
-            ReservationStatus.CONFIRMED,
-            Instant.now()
+            ReservationStatus.CONFIRMED
         );
 
         when(reservationService.createReservation(any(CreateReservationRequest.class))).thenReturn(created);
@@ -160,10 +148,9 @@ class ReservationControllerTest {
     @DisplayName("GET /api/reservations/{id} should return 200 OK when found")
     void shouldGetReservationById() throws Exception {
         ReservationResponse res = new ReservationResponse(
-            501L, 1L, "john@example.com", "John", 201L, "ABC-1234",
-            VehicleType.CAR, 101L, "A-101", 1, 1L, "Downtown",
-            Instant.now(), Instant.now().plusSeconds(3600), null, null,
-            BigDecimal.valueOf(10.00), ReservationStatus.CONFIRMED, Instant.now()
+            501L, 201L, 101L,
+            Instant.now(), Instant.now().plusSeconds(3600),
+            BigDecimal.valueOf(10.00), ReservationStatus.CONFIRMED
         );
 
         when(reservationService.getReservationById(501L)).thenReturn(res);
@@ -190,10 +177,9 @@ class ReservationControllerTest {
     @DisplayName("GET /api/reservations should return 200 OK and list of reservations")
     void shouldGetAllReservations() throws Exception {
         ReservationResponse res = new ReservationResponse(
-            501L, 1L, "john@example.com", "John", 201L, "ABC-1234",
-            VehicleType.CAR, 101L, "A-101", 1, 1L, "Downtown",
-            Instant.now(), Instant.now().plusSeconds(3600), null, null,
-            BigDecimal.valueOf(10.00), ReservationStatus.CONFIRMED, Instant.now()
+            501L, 201L, 101L,
+            Instant.now(), Instant.now().plusSeconds(3600),
+            BigDecimal.valueOf(10.00), ReservationStatus.CONFIRMED
         );
 
         when(reservationService.getAllReservations()).thenReturn(List.of(res));
@@ -208,10 +194,9 @@ class ReservationControllerTest {
     @DisplayName("PUT /api/reservations/{id} should return 200 OK with updated reservation")
     void shouldUpdateReservation() throws Exception {
         ReservationResponse updated = new ReservationResponse(
-            501L, 1L, "john@example.com", "John", 201L, "ABC-1234",
-            VehicleType.CAR, 101L, "A-101", 1, 1L, "Downtown",
-            Instant.now(), Instant.now().plusSeconds(7200), null, null,
-            BigDecimal.valueOf(20.00), ReservationStatus.CONFIRMED, Instant.now()
+            501L, 201L, 101L,
+            Instant.now(), Instant.now().plusSeconds(7200),
+            BigDecimal.valueOf(20.00), ReservationStatus.CONFIRMED
         );
 
         when(reservationService.updateReservation(eq(501L), any(UpdateReservationRequest.class)))
