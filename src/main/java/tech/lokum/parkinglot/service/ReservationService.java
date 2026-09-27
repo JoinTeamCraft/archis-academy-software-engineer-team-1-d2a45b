@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tech.lokum.parkinglot.dto.CreateReservationRequest;
 import tech.lokum.parkinglot.dto.ReservationResponse;
+import tech.lokum.parkinglot.dto.ReservationStatusResponse;
 import tech.lokum.parkinglot.dto.UpdateReservationRequest;
 import tech.lokum.parkinglot.entity.ParkingSpot;
 import tech.lokum.parkinglot.entity.Reservation;
@@ -228,6 +229,64 @@ public class ReservationService {
         Reservation saved = reservationRepository.save(reservation);
         log.info("Reservation ID {} has been cancelled", id);
         return ReservationResponse.fromEntity(saved);
+    }
+
+    /**
+     * Updates the lifecycle status of an existing reservation (e.g., cancel or confirm).
+     *
+     * @param reservationId ID of the reservation to update
+     * @param newStatus target reservation status
+     * @return status update response DTO
+     */
+    @Transactional
+    public ReservationStatusResponse updateReservationStatus(Long reservationId, ReservationStatus newStatus) {
+        log.info("Updating reservation ID {} status to {}", reservationId, newStatus);
+
+        if (reservationId == null) {
+            throw new BadRequestException("Reservation ID is required");
+        }
+        if (newStatus == null) {
+            throw new BadRequestException("Status is required");
+        }
+
+        Reservation reservation = reservationRepository.findById(reservationId)
+            .orElseThrow(() -> new ResourceNotFoundException("Reservation", "id", reservationId));
+
+        if (reservation.getStatus() == newStatus) {
+            return ReservationStatusResponse.of(reservationId, newStatus);
+        }
+
+        if (reservation.getStatus() == ReservationStatus.COMPLETED) {
+            throw new BadRequestException("Cannot change status of a COMPLETED reservation");
+        }
+
+        if (reservation.getStatus() == ReservationStatus.EXPIRED) {
+            throw new BadRequestException("Cannot change status of an EXPIRED reservation");
+        }
+
+        if (reservation.getStatus() == ReservationStatus.CANCELLED && newStatus != ReservationStatus.CONFIRMED) {
+            throw new BadRequestException("Cannot modify a CANCELLED reservation unless re-confirming");
+        }
+
+        if (newStatus == ReservationStatus.CONFIRMED || newStatus == ReservationStatus.ACTIVE) {
+            if (reservationRepository.hasOverlappingReservationsExcludingId(
+                reservation.getParkingSpot().getId(),
+                reservationId,
+                reservation.getStartTime(),
+                reservation.getEndTime(),
+                INACTIVE_STATUSES
+            )) {
+                throw new ConflictException(String.format(
+                    "Cannot set reservation to %s: Parking spot '%s' is already reserved by another booking for this time window",
+                    newStatus, reservation.getParkingSpot().getSpotNumber()
+                ));
+            }
+        }
+
+        reservation.setStatus(newStatus);
+        reservationRepository.updateStatusById(reservationId, newStatus);
+        log.info("Successfully updated reservation ID {} status to {}", reservationId, newStatus);
+        return ReservationStatusResponse.of(reservationId, newStatus);
     }
 
     /**

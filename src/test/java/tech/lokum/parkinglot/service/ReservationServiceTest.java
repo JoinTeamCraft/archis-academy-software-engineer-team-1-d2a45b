@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import tech.lokum.parkinglot.dto.CreateReservationRequest;
 import tech.lokum.parkinglot.dto.ReservationResponse;
+import tech.lokum.parkinglot.dto.ReservationStatusResponse;
 import tech.lokum.parkinglot.dto.UpdateReservationRequest;
 import tech.lokum.parkinglot.entity.ParkingLot;
 import tech.lokum.parkinglot.entity.ParkingSpot;
@@ -354,5 +355,114 @@ class ReservationServiceTest {
 
         // 2 hours * $12.00 = $24.00
         assertThat(price).isEqualByComparingTo("24.00");
+    }
+
+    @Test
+    @DisplayName("updateReservationStatus should successfully transition status to CANCELLED")
+    void shouldUpdateReservationStatusToCancelled() {
+        when(reservationRepository.findById(100L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.updateStatusById(100L, ReservationStatus.CANCELLED)).thenReturn(1);
+
+        ReservationStatusResponse response = reservationService.updateReservationStatus(100L, ReservationStatus.CANCELLED);
+
+        assertThat(response).isNotNull();
+        assertThat(response.reservationId()).isEqualTo(100L);
+        assertThat(response.status()).isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+        verify(reservationRepository).updateStatusById(100L, ReservationStatus.CANCELLED);
+    }
+
+    @Test
+    @DisplayName("updateReservationStatus should return immediately if already in target status")
+    void shouldBeIdempotentWhenStatusAlreadyMatches() {
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        when(reservationRepository.findById(100L)).thenReturn(Optional.of(reservation));
+
+        ReservationStatusResponse response = reservationService.updateReservationStatus(100L, ReservationStatus.CONFIRMED);
+
+        assertThat(response.reservationId()).isEqualTo(100L);
+        assertThat(response.status()).isEqualTo(ReservationStatus.CONFIRMED);
+    }
+
+    @Test
+    @DisplayName("updateReservationStatus should successfully re-confirm a cancelled reservation when no conflict")
+    void shouldReconfirmCancelledReservationWhenNoOverlap() {
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        when(reservationRepository.findById(100L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.hasOverlappingReservationsExcludingId(
+            eq(spot.getId()), eq(100L), eq(reservation.getStartTime()), eq(reservation.getEndTime()), any()
+        )).thenReturn(false);
+        when(reservationRepository.updateStatusById(100L, ReservationStatus.CONFIRMED)).thenReturn(1);
+
+        ReservationStatusResponse response = reservationService.updateReservationStatus(100L, ReservationStatus.CONFIRMED);
+
+        assertThat(response.reservationId()).isEqualTo(100L);
+        assertThat(response.status()).isEqualTo(ReservationStatus.CONFIRMED);
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+    }
+
+    @Test
+    @DisplayName("updateReservationStatus should throw ConflictException when re-confirming but spot is double-booked")
+    void shouldThrowConflictWhenReconfirmingSpotWithOverlap() {
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        when(reservationRepository.findById(100L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.hasOverlappingReservationsExcludingId(
+            eq(spot.getId()), eq(100L), eq(reservation.getStartTime()), eq(reservation.getEndTime()), any()
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> reservationService.updateReservationStatus(100L, ReservationStatus.CONFIRMED))
+            .isInstanceOf(ConflictException.class)
+            .hasMessageContaining("already reserved by another booking");
+    }
+
+    @Test
+    @DisplayName("updateReservationStatus should throw BadRequestException if reservation is already COMPLETED")
+    void shouldThrowBadRequestWhenUpdatingCompletedReservation() {
+        reservation.setStatus(ReservationStatus.COMPLETED);
+        when(reservationRepository.findById(100L)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.updateReservationStatus(100L, ReservationStatus.CANCELLED))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("Cannot change status of a COMPLETED reservation");
+    }
+
+    @Test
+    @DisplayName("updateReservationStatus should throw BadRequestException if reservation is EXPIRED")
+    void shouldThrowBadRequestWhenUpdatingExpiredReservation() {
+        reservation.setStatus(ReservationStatus.EXPIRED);
+        when(reservationRepository.findById(100L)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.updateReservationStatus(100L, ReservationStatus.CANCELLED))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("Cannot change status of an EXPIRED reservation");
+    }
+
+    @Test
+    @DisplayName("updateReservationStatus should throw BadRequestException if CANCELLED and target is not CONFIRMED")
+    void shouldThrowBadRequestWhenUpdatingCancelledToNonConfirmed() {
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        when(reservationRepository.findById(100L)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.updateReservationStatus(100L, ReservationStatus.ACTIVE))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("Cannot modify a CANCELLED reservation unless re-confirming");
+    }
+
+    @Test
+    @DisplayName("updateReservationStatus should throw ResourceNotFoundException when reservation does not exist")
+    void shouldThrowNotFoundWhenReservationDoesNotExist() {
+        when(reservationRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reservationService.updateReservationStatus(999L, ReservationStatus.CANCELLED))
+            .isInstanceOf(ResourceNotFoundException.class)
+            .hasMessageContaining("Reservation not found with id: '999'");
+    }
+
+    @Test
+    @DisplayName("updateReservationStatus should throw BadRequestException when status is null")
+    void shouldThrowBadRequestWhenStatusIsNull() {
+        assertThatThrownBy(() -> reservationService.updateReservationStatus(100L, null))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("Status is required");
     }
 }
