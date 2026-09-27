@@ -104,7 +104,7 @@ class RepositoryIntegrationTest {
     @Test
     @DisplayName("ParkingSpotRepository should find available spots excluding overlapping reservations")
     void testParkingSpotRepositoryAvailability() {
-        Instant now = Instant.now().plus(1, ChronoUnit.HOURS);
+        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS).plus(1, ChronoUnit.HOURS);
         Instant start = now;
         Instant end = now.plus(2, ChronoUnit.HOURS);
 
@@ -129,7 +129,7 @@ class RepositoryIntegrationTest {
     void testReservationOverlapDetection() {
         ParkingSpot overlapSpot = parkingSpotRepository.save(new ParkingSpot("OV-99", 1, VehicleType.CAR, lot));
 
-        Instant base = Instant.now().plus(5, ChronoUnit.HOURS);
+        Instant base = Instant.now().truncatedTo(ChronoUnit.SECONDS).plus(5, ChronoUnit.HOURS);
         Instant resStart = base;
         Instant resEnd = base.plus(2, ChronoUnit.HOURS);
 
