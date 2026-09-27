@@ -177,6 +177,36 @@ class ParkingLotControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/parking-lots with missing required fields should return 400 Bad Request")
+    void shouldReturn400OnMissingFields() throws Exception {
+        mockMvc.perform(post("/api/parking-lots")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.validationErrors.name").value("Parking lot name is required"))
+            .andExpect(jsonPath("$.validationErrors.location").value("Location is required"))
+            .andExpect(jsonPath("$.validationErrors.capacity").value("Capacity is required"));
+    }
+
+    @Test
+    @DisplayName("POST /api/parking-lots with negative capacity should return 400 Bad Request")
+    void shouldReturn400OnNegativeCapacity() throws Exception {
+        mockMvc.perform(post("/api/parking-lots")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "North Deck",
+                        "location": "100 North Rd",
+                        "capacity": -10
+                    }
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.validationErrors.capacity").value("Capacity must be at least 1"));
+    }
+
+    @Test
     @DisplayName("POST /api/parking-lots should return 409 Conflict if name already exists")
     void shouldReturn409OnDuplicateName() throws Exception {
         when(parkingLotService.createParkingLot(any(CreateParkingLotRequest.class)))
