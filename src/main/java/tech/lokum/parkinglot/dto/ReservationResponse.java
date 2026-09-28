@@ -1,5 +1,6 @@
 package tech.lokum.parkinglot.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import tech.lokum.parkinglot.entity.Reservation;
 import tech.lokum.parkinglot.entity.ReservationStatus;
@@ -13,7 +14,8 @@ import java.time.Instant;
  */
 @Schema(description = "Reservation response details")
 public record ReservationResponse(
-    @Schema(description = "Unique identifier of the reservation", example = "1")
+    @Schema(description = "Unique identifier of the reservation", example = "501")
+    @JsonProperty("id")
     Long id,
 
     @Schema(description = "ID of the reserving user", example = "1")
@@ -25,7 +27,7 @@ public record ReservationResponse(
     @Schema(description = "Full name of the reserving user", example = "Jane Doe")
     String userName,
 
-    @Schema(description = "ID of the reserved vehicle", example = "1")
+    @Schema(description = "ID of the reserved vehicle", example = "201")
     Long vehicleId,
 
     @Schema(description = "Vehicle license plate", example = "ABC-1234")
@@ -34,7 +36,7 @@ public record ReservationResponse(
     @Schema(description = "Vehicle category type", example = "CAR")
     VehicleType vehicleType,
 
-    @Schema(description = "ID of the reserved parking spot", example = "10")
+    @Schema(description = "ID of the reserved parking spot", example = "101")
     Long parkingSpotId,
 
     @Schema(description = "Spot designation number", example = "A-101")
@@ -70,6 +72,47 @@ public record ReservationResponse(
     @Schema(description = "Reservation creation timestamp in UTC", example = "2026-09-27T12:00:00Z")
     Instant createdAt
 ) {
+    /**
+     * Convenience constructor with defaults for tests and simplified instantiation.
+     */
+    public ReservationResponse(
+        Long id,
+        Long vehicleId,
+        Long parkingSpotId,
+        Instant startTime,
+        Instant endTime,
+        BigDecimal totalAmount,
+        ReservationStatus status
+    ) {
+        this(
+            id,
+            1L,
+            "john@example.com",
+            "John Doe",
+            vehicleId,
+            "ABC-1234",
+            VehicleType.CAR,
+            parkingSpotId,
+            "A-101",
+            1,
+            1L,
+            "Downtown Central Garage",
+            startTime,
+            endTime,
+            startTime,
+            endTime,
+            totalAmount,
+            status,
+            Instant.now()
+        );
+    }
+
+    @JsonProperty("reservationId")
+    @Schema(description = "Alias reservation ID", example = "501")
+    public Long getReservationId() {
+        return id;
+    }
+
     public static ReservationResponse fromEntity(Reservation r) {
         if (r == null) {
             return null;
