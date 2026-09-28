@@ -64,6 +64,16 @@ class ParkingLotControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/parking-lots should return 200 OK and empty array when no lots exist")
+    void shouldReturnEmptyListWhenNoParkingLots() throws Exception {
+        when(parkingLotService.getAllParkingLots()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/parking-lots"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
     @DisplayName("GET /api/parking-lots?page=0&size=10 should return 200 OK with pagination headers")
     void shouldGetPaginatedParkingLots() throws Exception {
         ParkingLotResponse lot1 = new ParkingLotResponse(1L, "Downtown Central", "123 Main St", 150);
@@ -80,6 +90,22 @@ class ParkingLotControllerTest {
             .andExpect(header().string("X-Page-Size", "10"))
             .andExpect(jsonPath("$", hasSize(1)))
             .andExpect(jsonPath("$[0].name").value("Downtown Central"));
+    }
+
+    @Test
+    @DisplayName("GET /api/parking-lots with negative page and size should fallback to default page index 0 and size 20")
+    void shouldHandleInvalidPaginationParametersGracefully() throws Exception {
+        ParkingLotResponse lot1 = new ParkingLotResponse(1L, "Downtown Central", "123 Main St", 150);
+        when(parkingLotService.getAllParkingLots(PageRequest.of(0, 20)))
+            .thenReturn(new PageImpl<>(List.of(lot1), PageRequest.of(0, 20), 1));
+
+        mockMvc.perform(get("/api/parking-lots")
+                .param("page", "-1")
+                .param("size", "-5"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("X-Current-Page", "0"))
+            .andExpect(header().string("X-Page-Size", "20"))
+            .andExpect(jsonPath("$", hasSize(1)));
     }
 
     @Test
