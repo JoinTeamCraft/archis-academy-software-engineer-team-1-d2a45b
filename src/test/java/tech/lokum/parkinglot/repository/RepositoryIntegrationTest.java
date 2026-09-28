@@ -17,7 +17,6 @@ import tech.lokum.parkinglot.entity.PaymentStatus;
 import tech.lokum.parkinglot.entity.Reservation;
 import tech.lokum.parkinglot.entity.ReservationStatus;
 import tech.lokum.parkinglot.entity.Role;
-import tech.lokum.parkinglot.entity.SpotStatus;
 import tech.lokum.parkinglot.entity.User;
 import tech.lokum.parkinglot.entity.Vehicle;
 import tech.lokum.parkinglot.entity.VehicleType;
