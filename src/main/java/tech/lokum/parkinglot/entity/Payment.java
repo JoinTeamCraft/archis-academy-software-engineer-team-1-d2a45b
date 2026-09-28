@@ -41,6 +41,9 @@ public class Payment extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     private PaymentStatus status = PaymentStatus.PENDING;
 
+    @Column(name = "currency", length = 3)
+    private String currency = "USD";
+
     @Column(name = "transaction_id", unique = true, length = 100)
     private String transactionId;
 
@@ -51,16 +54,21 @@ public class Payment extends BaseEntity {
     }
 
     public Payment(Reservation reservation, BigDecimal amount, PaymentMethod paymentMethod) {
-        this(reservation, amount, paymentMethod, PaymentStatus.PENDING, null, null);
+        this(reservation, amount, paymentMethod, PaymentStatus.PENDING, null, null, "USD");
     }
 
     public Payment(Reservation reservation, BigDecimal amount, PaymentMethod paymentMethod, PaymentStatus status, String transactionId, Instant paidAt) {
+        this(reservation, amount, paymentMethod, status, transactionId, paidAt, "USD");
+    }
+
+    public Payment(Reservation reservation, BigDecimal amount, PaymentMethod paymentMethod, PaymentStatus status, String transactionId, Instant paidAt, String currency) {
         this.reservation = reservation;
         this.amount = amount;
         this.paymentMethod = paymentMethod;
         this.status = status != null ? status : PaymentStatus.PENDING;
         this.transactionId = transactionId;
         this.paidAt = paidAt;
+        this.currency = currency != null ? currency : "USD";
     }
 
     public void markSuccess(String transactionId) {
@@ -111,6 +119,22 @@ public class Payment extends BaseEntity {
 
     public void setTransactionId(String transactionId) {
         this.transactionId = transactionId;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
+    }
+
+    public String getConfirmationNumber() {
+        return transactionId;
+    }
+
+    public void setConfirmationNumber(String confirmationNumber) {
+        this.transactionId = confirmationNumber;
     }
 
     public Instant getPaidAt() {

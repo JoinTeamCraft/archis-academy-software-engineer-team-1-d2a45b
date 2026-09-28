@@ -181,5 +181,14 @@ class RepositoryIntegrationTest {
         Optional<Payment> byTxId = paymentRepository.findByTransactionId("TX-999000");
         assertThat(byTxId).isPresent();
         assertThat(byTxId.get().getAmount()).isEqualByComparingTo("10.00");
+
+        Optional<Payment> byId = paymentRepository.findById(payment.getId());
+        assertThat(byId).isPresent();
+        assertThat(byId.get().getAmount()).isEqualByComparingTo("10.00");
+
+        Optional<Payment> byIdWithRes = paymentRepository.findByIdWithReservation(payment.getId());
+        assertThat(byIdWithRes).isPresent();
+        assertThat(byIdWithRes.get().getReservation().getId()).isEqualTo(res.getId());
+        assertThat(byIdWithRes.get().getCurrency()).isEqualTo("USD");
     }
 }
