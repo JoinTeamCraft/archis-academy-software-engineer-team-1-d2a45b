@@ -53,4 +53,29 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      * Finds all payments for reservations belonging to a specific user.
      */
     List<Payment> findByReservationUserId(Long userId);
+
+    /**
+     * Finds payments matching both status and reservation ID.
+     */
+    List<Payment> findByStatusAndReservationId(PaymentStatus status, Long reservationId);
+
+    /**
+     * Finds payments matching both status and reservation ID with pagination.
+     */
+    Page<Payment> findByStatusAndReservationId(PaymentStatus status, Long reservationId, Pageable pageable);
+
+    /**
+     * Retrieves payments based on optional status and reservation ID filters.
+     */
+    @Query("""
+        SELECT p FROM Payment p
+        LEFT JOIN FETCH p.reservation r
+        WHERE (:status IS NULL OR p.status = :status)
+          AND (:reservationId IS NULL OR r.id = :reservationId)
+        ORDER BY p.id ASC
+    """)
+    List<Payment> findPaymentsWithFilters(
+        @Param("status") PaymentStatus status,
+        @Param("reservationId") Long reservationId
+    );
 }

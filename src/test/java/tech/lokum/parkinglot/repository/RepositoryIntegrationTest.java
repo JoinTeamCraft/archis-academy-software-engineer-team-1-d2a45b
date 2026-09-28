@@ -190,5 +190,20 @@ class RepositoryIntegrationTest {
         assertThat(byIdWithRes).isPresent();
         assertThat(byIdWithRes.get().getReservation().getId()).isEqualTo(res.getId());
         assertThat(byIdWithRes.get().getCurrency()).isEqualTo("USD");
+
+        List<Payment> allFiltered = paymentRepository.findPaymentsWithFilters(null, null);
+        assertThat(allFiltered).contains(payment);
+
+        List<Payment> statusFiltered = paymentRepository.findPaymentsWithFilters(PaymentStatus.SUCCESS, null);
+        assertThat(statusFiltered).contains(payment);
+
+        List<Payment> resFiltered = paymentRepository.findPaymentsWithFilters(null, res.getId());
+        assertThat(resFiltered).contains(payment);
+
+        List<Payment> bothFiltered = paymentRepository.findByStatusAndReservationId(PaymentStatus.SUCCESS, res.getId());
+        assertThat(bothFiltered).contains(payment);
+
+        List<Payment> mismatchFiltered = paymentRepository.findPaymentsWithFilters(PaymentStatus.FAILED, res.getId());
+        assertThat(mismatchFiltered).doesNotContain(payment);
     }
 }
