@@ -95,7 +95,7 @@ class UserControllerSecurityTest {
         @Test
         @DisplayName("GET /api/users/{id} should succeed with 200 OK when called by ADMIN")
         void adminCanGetUserById() throws Exception {
-            UserResponse response = new UserResponse(1L, "admin@test.com", "admin", Role.ADMIN);
+            UserResponse response = new UserResponse(1L, "admin@test.com", "admin", null, Role.ADMIN, true);
             when(userService.getUserById(eq(1L))).thenReturn(response);
 
             mockMvc.perform(get("/api/users/1")
@@ -110,7 +110,7 @@ class UserControllerSecurityTest {
         @Test
         @DisplayName("GET /api/users/{id} should succeed with 200 OK when called by MANAGER")
         void managerCanGetUserById() throws Exception {
-            UserResponse response = new UserResponse(2L, "manager@test.com", "manager", Role.MANAGER);
+            UserResponse response = new UserResponse(2L, "manager@test.com", "manager", null, Role.MANAGER, true);
             when(userService.getUserById(eq(2L))).thenReturn(response);
 
             mockMvc.perform(get("/api/users/2")
@@ -149,7 +149,7 @@ class UserControllerSecurityTest {
         @Test
         @DisplayName("GET /api/users should return 200 OK and paginated users when called by ADMIN")
         void adminCanListUsers() throws Exception {
-            UserResponse u1 = new UserResponse(1L, "admin@test.com", "admin", Role.ADMIN);
+            UserResponse u1 = new UserResponse(1L, "admin@test.com", "admin", null, Role.ADMIN, true);
             PageResponse<UserResponse> pageResponse = new PageResponse<>(List.of(u1), 0, 20, 1, 1, true, true);
             when(userService.getAllUsers(any(Pageable.class))).thenReturn(pageResponse);
 
@@ -163,7 +163,7 @@ class UserControllerSecurityTest {
         @Test
         @DisplayName("GET /api/users should return 200 OK when called by MANAGER")
         void managerCanListUsers() throws Exception {
-            UserResponse u1 = new UserResponse(2L, "manager@test.com", "manager", Role.MANAGER);
+            UserResponse u1 = new UserResponse(2L, "manager@test.com", "manager", null, Role.MANAGER, true);
             PageResponse<UserResponse> pageResponse = new PageResponse<>(List.of(u1), 0, 20, 1, 1, true, true);
             when(userService.getAllUsers(any(Pageable.class))).thenReturn(pageResponse);
 
