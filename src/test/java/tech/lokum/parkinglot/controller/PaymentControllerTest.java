@@ -10,6 +10,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tech.lokum.parkinglot.dto.PaymentNotificationRequest;
+import tech.lokum.parkinglot.dto.PaymentNotificationResponse;
 import tech.lokum.parkinglot.dto.PaymentResponse;
 import tech.lokum.parkinglot.entity.PaymentMethod;
 import tech.lokum.parkinglot.entity.PaymentStatus;
@@ -26,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -176,5 +179,64 @@ class PaymentControllerTest {
             .andExpect(header().string("X-Page-Size", "10"))
             .andExpect(jsonPath("$", hasSize(1)))
             .andExpect(jsonPath("$[0].paymentId").value(301));
+    }
+
+    @Test
+    @DisplayName("POST /api/payments/notifications should return 200 OK with success message when payload is valid")
+    void shouldHandlePaymentNotificationSuccessfully() throws Exception {
+        PaymentNotificationResponse response = PaymentNotificationResponse.success();
+
+        when(paymentService.handlePaymentNotification(any(PaymentNotificationRequest.class)))
+            .thenReturn(response);
+
+        mockMvc.perform(post("/api/payments/notifications")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "paymentId": 301,
+                        "status": "SUCCESS",
+                        "confirmationNumber": "STRIPE123456"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.message").value("Payment status updated successfully."));
+    }
+
+    @Test
+    @DisplayName("POST /api/payments/notifications should return 400 Bad Request when mandatory fields are missing")
+    void shouldReturn400WhenNotificationMissingFields() throws Exception {
+        mockMvc.perform(post("/api/payments/notifications")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "paymentId": null,
+                        "status": null
+                    }
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.validationErrors.paymentId").isNotEmpty())
+            .andExpect(jsonPath("$.validationErrors.status").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("POST /api/payments/notifications should return 404 Not Found when payment does not exist")
+    void shouldReturn404WhenPaymentNotFoundForNotification() throws Exception {
+        when(paymentService.handlePaymentNotification(any(PaymentNotificationRequest.class)))
+            .thenThrow(new ResourceNotFoundException("Payment", "id", 999L));
+
+        mockMvc.perform(post("/api/payments/notifications")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "paymentId": 999,
+                        "status": "SUCCESS",
+                        "confirmationNumber": "STRIPE123456"
+                    }
+                    """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value("Payment not found with id: '999'"));
     }
 }
