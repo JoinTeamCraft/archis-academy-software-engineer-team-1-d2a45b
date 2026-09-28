@@ -59,6 +59,11 @@ All settings come from environment variables with local defaults. See [.env.exam
 | `DB_CONNECTION_TIMEOUT_MS` | `10000` |
 | `JPA_DDL_AUTO` | `update` (switch to `validate` once you add Flyway) |
 | `PORT` | `8080` |
+| `LOG_LEVEL` / `LOG_LEVEL_APP` | `INFO` / `INFO` (root and `tech.lokum.parkinglot`) |
+| `LOG_LEVEL_SQL` | `INFO` (`DEBUG` prints every SQL statement) |
+| `LOG_FILE` | `logs/parking-lot.log` |
+| `LOG_MAX_FILE_SIZE` / `LOG_MAX_HISTORY` / `LOG_TOTAL_SIZE_CAP` | `10MB` / `14` days / `1GB` |
+| `DB_SLOW_QUERY_MS` | `500` (`0` turns the slow query log off) |
 | `JWT_SECRET` | none, add it when you build authentication |
 
 ## Database
@@ -76,6 +81,29 @@ All settings come from environment variables with local defaults. See [.env.exam
 $env:DB_PORT=5433; docker compose up -d postgres
 $env:DB_URL="jdbc:postgresql://localhost:5433/parking_lot"; .\gradlew.bat bootRun
 ```
+
+## Logging
+
+SLF4J with Logback, set up in [logback-spring.xml](src/main/resources/logback-spring.xml). Get a logger with `LoggerFactory.getLogger(MyClass.class)` and use `{}` placeholders.
+
+- **Where:** the console, and `logs/parking-lot.log`. The file rolls daily or at `LOG_MAX_FILE_SIZE`, old files are gzipped, and anything older than `LOG_MAX_HISTORY` days or past `LOG_TOTAL_SIZE_CAP` is deleted.
+- **API calls:** every request is logged once: `GET /api/lots -> 200 (12 ms)`. Status 4xx is `WARN`, 5xx is `ERROR`, `/actuator/**` is `DEBUG`. Only the method and path are logged, never headers, query strings or bodies.
+- **Request id:** each request gets an id (from the `X-Request-Id` header, or a new UUID). It is sent back in the `X-Request-Id` response header and printed on every line logged during that request, so you can grep one request end to end.
+- **Database:** the connection is logged at startup, queries slower than `DB_SLOW_QUERY_MS` are logged by `org.hibernate.SQL_SLOW`, and `LOG_LEVEL_SQL=DEBUG` prints every statement. Do not turn on `org.hibernate.orm.jdbc.bind`: it prints bound values, including password hashes.
+- **Secrets:** values of keys like `password`, `token`, `secret`, `apiKey` and `Authorization`, plus `Bearer` tokens and JWTs, are replaced with `****` in every message. This is a safety net: never log a password, token or card number on purpose.
+
+Which level to use:
+
+| Level | For | Example |
+| --- | --- | --- |
+| `ERROR` | Something failed and needs a person to look at it | Payment provider unreachable, unexpected exception |
+| `WARN` | Unexpected but handled, or a client error | Failed login, 4xx response, retrying a call |
+| `INFO` | Key business events, one line each | User registered, user logged in, reservation created or cancelled |
+| `DEBUG` | Detail for debugging, off by default | Computed price breakdown, SQL statements |
+
+Log authentication by user id or email and outcome (`Login failed for user a@b.io`), never with the password or token.
+
+To see more locally: `LOG_LEVEL_APP=DEBUG LOG_LEVEL_SQL=DEBUG ./gradlew bootRun`.
 
 ## Project layout
 

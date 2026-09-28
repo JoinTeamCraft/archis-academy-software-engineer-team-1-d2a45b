@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Spring Boot's default console + rolling file logging, plus:
+  - secrets masked in every message (SensitiveDataMaskingConverter replaces %m, %msg and %message)
+  - the request id in front of lines logged while handling a request
+Levels, file name and rotation limits are set in application.yml (logging.*).
+-->
+<configuration>
+    <conversionRule conversionWord="m" class="tech.lokum.parkinglot.config.logging.SensitiveDataMaskingConverter"/>
+    <conversionRule conversionWord="msg" class="tech.lokum.parkinglot.config.logging.SensitiveDataMaskingConverter"/>
+    <conversionRule conversionWord="message" class="tech.lokum.parkinglot.config.logging.SensitiveDataMaskingConverter"/>
+
+    <!-- "[<requestId>] " inside a request, nothing outside one. Must be set before defaults.xml builds the patterns. -->
+    <property name="LOG_CORRELATION_PATTERN" value="%replace([%X{requestId}] ){'^\[\] $', ''}"/>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <property name="LOG_FILE" value="${LOG_FILE:-logs/parking-lot.log}"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+    <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>
