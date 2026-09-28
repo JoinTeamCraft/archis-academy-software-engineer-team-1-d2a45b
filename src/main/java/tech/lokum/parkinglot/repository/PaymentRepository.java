@@ -3,11 +3,14 @@ package tech.lokum.parkinglot.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tech.lokum.parkinglot.entity.Payment;
 import tech.lokum.parkinglot.entity.PaymentStatus;
+
+import java.time.Instant;
 
 import java.util.List;
 import java.util.Optional;
@@ -77,5 +80,23 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findPaymentsWithFilters(
         @Param("status") PaymentStatus status,
         @Param("reservationId") Long reservationId
+    );
+
+    /**
+     * Updates payment status, transaction ID / confirmation number, and paidAt timestamp.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("""
+        UPDATE Payment p
+        SET p.status = :status,
+            p.transactionId = :confirmationNumber,
+            p.paidAt = :paidAt
+        WHERE p.id = :id
+    """)
+    int updateStatusAndConfirmation(
+        @Param("id") Long id,
+        @Param("status") PaymentStatus status,
+        @Param("confirmationNumber") String confirmationNumber,
+        @Param("paidAt") Instant paidAt
     );
 }

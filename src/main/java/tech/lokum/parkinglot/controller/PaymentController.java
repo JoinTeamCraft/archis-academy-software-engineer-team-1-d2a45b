@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -14,10 +15,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import tech.lokum.parkinglot.dto.ErrorResponse;
+import tech.lokum.parkinglot.dto.PaymentNotificationRequest;
+import tech.lokum.parkinglot.dto.PaymentNotificationResponse;
 import tech.lokum.parkinglot.dto.PaymentResponse;
 import tech.lokum.parkinglot.entity.PaymentStatus;
 import tech.lokum.parkinglot.service.PaymentService;
@@ -119,5 +124,38 @@ public class PaymentController {
 
         List<PaymentResponse> payments = paymentService.getAllPayments(status, reservationId);
         return ResponseEntity.ok(payments);
+    }
+
+    /**
+     * Receives and processes payment status notifications from external payment gateways.
+     *
+     * @param request notification payload containing paymentId, status, and confirmationNumber
+     * @return 200 OK with confirmation message
+     */
+    @PostMapping("/notifications")
+    @Operation(
+        summary = "Handle payment status notification",
+        description = "Processes status updates and confirmation numbers from external payment gateways (e.g. Stripe, PayPal)."
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Payment status updated successfully.",
+        content = @Content(schema = @Schema(implementation = PaymentNotificationResponse.class))
+    )
+    @ApiResponse(
+        responseCode = "400",
+        description = "Validation failed for notification payload",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    @ApiResponse(
+        responseCode = "404",
+        description = "Payment not found",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    public ResponseEntity<PaymentNotificationResponse> handlePaymentNotification(
+        @Valid @RequestBody PaymentNotificationRequest request
+    ) {
+        PaymentNotificationResponse response = paymentService.handlePaymentNotification(request);
+        return ResponseEntity.ok(response);
     }
 }

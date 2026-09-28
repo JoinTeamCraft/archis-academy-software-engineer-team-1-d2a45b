@@ -11,6 +11,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import tech.lokum.parkinglot.dto.PaymentNotificationRequest;
+import tech.lokum.parkinglot.dto.PaymentNotificationResponse;
 import tech.lokum.parkinglot.dto.PaymentResponse;
 import tech.lokum.parkinglot.entity.ParkingLot;
 import tech.lokum.parkinglot.entity.ParkingSpot;
@@ -33,6 +35,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -198,5 +202,84 @@ class PaymentServiceTest {
 
         assertThat(page.getTotalElements()).isEqualTo(1);
         assertThat(page.getContent().get(0).paymentId()).isEqualTo(301L);
+    }
+
+    @Test
+    @DisplayName("handlePaymentNotification should update payment status to SUCCESS and set confirmationNumber")
+    void shouldHandlePaymentNotificationSuccessfully() {
+        when(paymentRepository.findById(301L)).thenReturn(Optional.of(payment));
+
+        PaymentNotificationRequest request = new PaymentNotificationRequest(
+            301L,
+            PaymentStatus.SUCCESS,
+            "STRIPE_NEW_999"
+        );
+
+        PaymentNotificationResponse response = paymentService.handlePaymentNotification(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.message()).isEqualTo("Payment status updated successfully.");
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
+        assertThat(payment.getTransactionId()).isEqualTo("STRIPE_NEW_999");
+        assertThat(payment.getPaidAt()).isNotNull();
+
+        verify(paymentRepository).save(payment);
+        verify(paymentRepository).updateStatusAndConfirmation(eq(301L), eq(PaymentStatus.SUCCESS), eq("STRIPE_NEW_999"), any());
+    }
+
+    @Test
+    @DisplayName("handlePaymentNotification should update payment status to FAILED")
+    void shouldHandlePaymentNotificationWithFailedStatus() {
+        when(paymentRepository.findById(301L)).thenReturn(Optional.of(payment));
+
+        PaymentNotificationRequest request = new PaymentNotificationRequest(
+            301L,
+            PaymentStatus.FAILED,
+            "STRIPE_FAIL_001"
+        );
+
+        PaymentNotificationResponse response = paymentService.handlePaymentNotification(request);
+
+        assertThat(response.message()).isEqualTo("Payment status updated successfully.");
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(payment.getTransactionId()).isEqualTo("STRIPE_FAIL_001");
+
+        verify(paymentRepository).save(payment);
+    }
+
+    @Test
+    @DisplayName("handlePaymentNotification should throw ResourceNotFoundException when payment does not exist")
+    void shouldThrowResourceNotFoundExceptionWhenPaymentNotFoundForNotification() {
+        when(paymentRepository.findById(999L)).thenReturn(Optional.empty());
+
+        PaymentNotificationRequest request = new PaymentNotificationRequest(
+            999L,
+            PaymentStatus.SUCCESS,
+            "STRIPE123"
+        );
+
+        assertThatThrownBy(() -> paymentService.handlePaymentNotification(request))
+            .isInstanceOf(ResourceNotFoundException.class)
+            .hasMessageContaining("Payment not found with id: '999'");
+    }
+
+    @Test
+    @DisplayName("handlePaymentNotification should throw BadRequestException when request is null or fields invalid")
+    void shouldThrowBadRequestWhenNotificationFieldsInvalid() {
+        assertThatThrownBy(() -> paymentService.handlePaymentNotification(null))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("Notification payload is required");
+
+        assertThatThrownBy(() -> paymentService.handlePaymentNotification(new PaymentNotificationRequest(null, PaymentStatus.SUCCESS, "TX")))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("Valid payment ID is required");
+
+        assertThatThrownBy(() -> paymentService.handlePaymentNotification(new PaymentNotificationRequest(0L, PaymentStatus.SUCCESS, "TX")))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("Valid payment ID is required");
+
+        assertThatThrownBy(() -> paymentService.handlePaymentNotification(new PaymentNotificationRequest(301L, null, "TX")))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("Payment status is required");
     }
 }

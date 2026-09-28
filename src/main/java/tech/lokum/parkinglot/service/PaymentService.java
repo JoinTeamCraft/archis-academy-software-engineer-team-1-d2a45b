@@ -7,6 +7,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tech.lokum.parkinglot.dto.PaymentNotificationRequest;
+import tech.lokum.parkinglot.dto.PaymentNotificationResponse;
 import tech.lokum.parkinglot.dto.PaymentResponse;
 import tech.lokum.parkinglot.entity.Payment;
 import tech.lokum.parkinglot.entity.PaymentStatus;
@@ -14,6 +16,7 @@ import tech.lokum.parkinglot.exception.BadRequestException;
 import tech.lokum.parkinglot.exception.ResourceNotFoundException;
 import tech.lokum.parkinglot.repository.PaymentRepository;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -97,5 +100,54 @@ public class PaymentService {
         }
 
         return payments.map(PaymentResponse::fromEntity);
+    }
+
+    /**
+     * Receives and processes a payment status notification from an external payment gateway.
+     *
+     * @param request notification payload containing payment ID, status, and confirmation number
+     * @return PaymentNotificationResponse confirming update
+     * @throws BadRequestException if request or mandatory fields are missing
+     * @throws ResourceNotFoundException if payment is not found
+     */
+    @Transactional
+    public PaymentNotificationResponse handlePaymentNotification(PaymentNotificationRequest request) {
+        if (request == null) {
+            throw new BadRequestException("Notification payload is required");
+        }
+        if (request.paymentId() == null || request.paymentId() <= 0) {
+            throw new BadRequestException("Valid payment ID is required");
+        }
+        if (request.status() == null) {
+            throw new BadRequestException("Payment status is required");
+        }
+
+        log.info("Processing payment notification for payment ID {}: status={}, confirmationNumber={}",
+            request.paymentId(), request.status(), request.confirmationNumber());
+
+        Payment payment = paymentRepository.findById(request.paymentId())
+            .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", request.paymentId()));
+
+        payment.setStatus(request.status());
+        if (request.confirmationNumber() != null && !request.confirmationNumber().isBlank()) {
+            payment.setTransactionId(request.confirmationNumber());
+        }
+
+        Instant paidAt = payment.getPaidAt();
+        if (request.status() == PaymentStatus.SUCCESS && paidAt == null) {
+            paidAt = Instant.now();
+            payment.setPaidAt(paidAt);
+        }
+
+        paymentRepository.save(payment);
+        paymentRepository.updateStatusAndConfirmation(
+            payment.getId(),
+            payment.getStatus(),
+            payment.getTransactionId(),
+            paidAt
+        );
+
+        log.info("Successfully updated payment ID {} to status {}", payment.getId(), payment.getStatus());
+        return PaymentNotificationResponse.success();
     }
 }

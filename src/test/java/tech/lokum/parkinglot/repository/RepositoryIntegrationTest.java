@@ -204,5 +204,13 @@ class RepositoryIntegrationTest {
 
         List<Payment> mismatchFiltered = paymentRepository.findPaymentsWithFilters(PaymentStatus.FAILED, res.getId());
         assertThat(mismatchFiltered).doesNotContain(payment);
+
+        Instant updateTime = Instant.now();
+        int updatedRows = paymentRepository.updateStatusAndConfirmation(payment.getId(), PaymentStatus.REFUNDED, "REF-12345", updateTime);
+        assertThat(updatedRows).isEqualTo(1);
+
+        Payment reloaded = paymentRepository.findById(payment.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        assertThat(reloaded.getTransactionId()).isEqualTo("REF-12345");
     }
 }
