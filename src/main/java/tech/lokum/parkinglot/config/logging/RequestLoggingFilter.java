@@ -1,5 +1,7 @@
 package tech.lokum.parkinglot.config.logging;
 
+import jakarta.servlet.AsyncEvent;
+import jakarta.servlet.AsyncListener;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,16 +50,28 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         try {
             chain.doFilter(request, response);
         } catch (IOException | ServletException | RuntimeException e) {
-            // The container turns this into a 500 after we return; the exception itself is logged there.
+            // Only exceptions nothing downstream handled get here, and the container turns those into a
+            // 500 after we return. The exception itself is logged there.
             failed = true;
             throw e;
         } finally {
-            int status = failed ? HttpServletResponse.SC_INTERNAL_SERVER_ERROR : response.getStatus();
-            long durationMs = (System.nanoTime() - start) / 1_000_000;
-            log.atLevel(levelFor(request.getRequestURI(), status))
-                    .log("{} {} -> {} ({} ms)", request.getMethod(), request.getRequestURI(), status, durationMs);
+            if (!failed && request.isAsyncStarted()) {
+                // The response is finished later on another thread, so log once it completes.
+                request.getAsyncContext()
+                        .addListener(new AsyncCompletionLogger(request, response, requestId, start));
+            } else {
+                int status = failed ? HttpServletResponse.SC_INTERNAL_SERVER_ERROR : response.getStatus();
+                logRequest(request, status, start);
+            }
             MDC.remove(REQUEST_ID_MDC_KEY);
         }
+    }
+
+    private static void logRequest(HttpServletRequest request, int status, long startNanos) {
+        long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
+        String path = pathOnly(request.getRequestURI());
+        log.atLevel(levelFor(path, request.getContextPath(), status))
+                .log("{} {} -> {} ({} ms)", request.getMethod(), path, status, durationMs);
     }
 
     static String resolveRequestId(String header) {
@@ -67,7 +81,16 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         return UUID.randomUUID().toString();
     }
 
-    static Level levelFor(String path, int status) {
+    // getRequestURI() excludes the query string by spec; cut at '?' anyway so it can never be logged.
+    static String pathOnly(String uri) {
+        if (uri == null) {
+            return "";
+        }
+        int query = uri.indexOf('?');
+        return query < 0 ? uri : uri.substring(0, query);
+    }
+
+    static Level levelFor(String path, String contextPath, int status) {
         if (status >= 500) {
             return Level.ERROR;
         }
@@ -75,6 +98,38 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             return Level.WARN;
         }
         // Health checks hit the app every few seconds; keep them out of the INFO log.
-        return path.startsWith("/actuator") ? Level.DEBUG : Level.INFO;
+        String appPath = contextPath != null && path.startsWith(contextPath)
+                ? path.substring(contextPath.length()) : path;
+        return appPath.startsWith("/actuator") ? Level.DEBUG : Level.INFO;
+    }
+
+    /** Logs an async request when its response is complete, with the request id put back in the MDC. */
+    private record AsyncCompletionLogger(HttpServletRequest request, HttpServletResponse response, String requestId,
+            long startNanos) implements AsyncListener {
+
+        @Override
+        public void onComplete(AsyncEvent event) {
+            MDC.put(REQUEST_ID_MDC_KEY, requestId);
+            try {
+                logRequest(request, response.getStatus(), startNanos);
+            } finally {
+                MDC.remove(REQUEST_ID_MDC_KEY);
+            }
+        }
+
+        @Override
+        public void onStartAsync(AsyncEvent event) {
+            // A new async cycle drops its listeners; stay registered until the response completes.
+            event.getAsyncContext().addListener(this);
+        }
+
+        // The container completes the request after a timeout or error, so onComplete still logs it.
+        @Override
+        public void onTimeout(AsyncEvent event) {
+        }
+
+        @Override
+        public void onError(AsyncEvent event) {
+        }
     }
 }

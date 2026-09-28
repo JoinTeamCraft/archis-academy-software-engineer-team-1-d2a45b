@@ -52,6 +52,55 @@ class RequestLoggingFilterTest {
     }
 
     @Test
+    void neverLogsAQueryStringEvenIfTheUriCarriesOne() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/lots?token=abc");
+
+        filter.doFilter(request, new MockHttpServletResponse(), (req, res) -> { });
+
+        assertThat(appender.list.getFirst().getFormattedMessage())
+                .startsWith("GET /api/lots -> 200")
+                .doesNotContain("token");
+    }
+
+    @Test
+    void missingUriDoesNotBreakTheRequest() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", null);
+
+        filter.doFilter(request, new MockHttpServletResponse(), (req, res) -> { });
+
+        assertThat(appender.list.getFirst().getFormattedMessage()).startsWith("GET  -> 200");
+    }
+
+    @Test
+    void asyncRequestIsLoggedWhenItCompletesWithItsFinalStatus() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/reports");
+        request.setAsyncSupported(true);
+        request.addHeader(REQUEST_ID_HEADER, "async-1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, (req, res) -> req.startAsync());
+        assertThat(appender.list).isEmpty();
+
+        response.setStatus(201);
+        request.getAsyncContext().complete();
+
+        ILoggingEvent event = appender.list.getFirst();
+        assertThat(event.getFormattedMessage()).startsWith("GET /api/reports -> 201");
+        assertThat(event.getMDCPropertyMap()).containsEntry(REQUEST_ID_MDC_KEY, "async-1");
+        assertThat(MDC.get(REQUEST_ID_MDC_KEY)).isNull();
+    }
+
+    @Test
+    void healthChecksUnderAContextPathAreDebug() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/parking/actuator/health");
+        request.setContextPath("/parking");
+
+        filter.doFilter(request, new MockHttpServletResponse(), (req, res) -> { });
+
+        assertThat(appender.list.getFirst().getLevel()).isEqualTo(Level.DEBUG);
+    }
+
+    @Test
     void clientErrorsAreWarnAndServerErrorsAreError() throws Exception {
         filter.doFilter(new MockHttpServletRequest("POST", "/api/auth/login"), new MockHttpServletResponse(),
                 (req, res) -> ((MockHttpServletResponse) res).setStatus(401));

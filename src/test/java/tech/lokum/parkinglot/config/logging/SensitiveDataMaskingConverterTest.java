@@ -3,6 +3,7 @@ package tech.lokum.parkinglot.config.logging;
 import static org.assertj.core.api.Assertions.assertThat;
 import static tech.lokum.parkinglot.config.logging.SensitiveDataMaskingConverter.mask;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -22,9 +23,20 @@ class SensitiveDataMaskingConverterTest {
         "Authorization: Bearer abc.def.ghi                  | Authorization: ****",
         "sent header Bearer abc123                          | sent header Bearer ****",
         "token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig-_1  | token ****",
+        "password=\"correct horse battery\" user=bob        | password=\"****\" user=bob",
+        "{\"password\":\"a \\\"quoted\\\" pass\",\"id\":1}  | {\"password\":\"****\",\"id\":1}",
+        "Authorization:\"Bearer abc.def ghi\"               | Authorization:\"****\"",
+        "/api/login?password=p%40ss%3Aword&next=/home      | /api/login?password=****&next=/home",
+        "{password=s3c:r=t}                                 | {password=****}",
     })
     void masksSecrets(String message, String expected) {
         assertThat(mask(message)).isEqualTo(expected);
+    }
+
+    // CsvSource uses ' as its quote character, so the single-quoted case lives here.
+    @Test
+    void masksWholeSingleQuotedValue() {
+        assertThat(mask("secret='two words' ok")).isEqualTo("secret='****' ok");
     }
 
     @ParameterizedTest
