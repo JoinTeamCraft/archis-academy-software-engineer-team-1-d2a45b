@@ -5,6 +5,15 @@ package tech.lokum.parkinglot.entity;
  */
 public enum Role {
     ADMIN,
+    MANAGER,
+    USER,
     OPERATOR,
-    CUSTOMER
+    CUSTOMER;
+
+    /**
+     * Returns the Spring Security authority format (e.g., "ROLE_ADMIN").
+     */
+    public String getAuthority() {
+        return "ROLE_" + this.name();
+    }
 }
