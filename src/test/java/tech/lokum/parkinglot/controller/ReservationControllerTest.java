@@ -12,6 +12,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tech.lokum.parkinglot.dto.CreateReservationRequest;
 import tech.lokum.parkinglot.dto.ReservationResponse;
+import tech.lokum.parkinglot.dto.ReservationStatusResponse;
 import tech.lokum.parkinglot.dto.UpdateReservationRequest;
 import tech.lokum.parkinglot.entity.ReservationStatus;
 import tech.lokum.parkinglot.entity.VehicleType;
@@ -221,5 +222,53 @@ class ReservationControllerTest {
 
         mockMvc.perform(delete("/api/reservations/501"))
             .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("PUT /api/reservations/{reservationId}/status should return 200 OK with updated reservationId and status")
+    void shouldUpdateReservationStatusSuccessfully() throws Exception {
+        when(reservationService.updateReservationStatus(501L, ReservationStatus.CANCELLED))
+            .thenReturn(new ReservationStatusResponse(501L, ReservationStatus.CANCELLED));
+
+        mockMvc.perform(put("/api/reservations/501/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "status": "CANCELLED"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.reservationId").value(501))
+            .andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/reservations/{reservationId}/status should return 400 Bad Request when status is missing")
+    void shouldReturn400WhenStatusIsMissing() throws Exception {
+        mockMvc.perform(put("/api/reservations/501/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {}
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.validationErrors.status").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("PUT /api/reservations/{reservationId}/status should return 404 when reservation not found")
+    void shouldReturn404WhenReservationNotFoundForStatusUpdate() throws Exception {
+        when(reservationService.updateReservationStatus(999L, ReservationStatus.CANCELLED))
+            .thenThrow(new ResourceNotFoundException("Reservation", "id", 999L));
+
+        mockMvc.perform(put("/api/reservations/999/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "status": "CANCELLED"
+                    }
+                    """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404));
     }
 }

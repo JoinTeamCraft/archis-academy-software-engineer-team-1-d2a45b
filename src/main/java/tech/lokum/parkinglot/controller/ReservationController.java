@@ -29,7 +29,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import tech.lokum.parkinglot.dto.CreateReservationRequest;
 import tech.lokum.parkinglot.dto.ErrorResponse;
 import tech.lokum.parkinglot.dto.ReservationResponse;
+import tech.lokum.parkinglot.dto.ReservationStatusResponse;
 import tech.lokum.parkinglot.dto.UpdateReservationRequest;
+import tech.lokum.parkinglot.dto.UpdateReservationStatusRequest;
 import tech.lokum.parkinglot.service.ReservationService;
 
 import java.net.URI;
@@ -176,6 +178,46 @@ public class ReservationController {
     ) {
         ReservationResponse updated = reservationService.updateReservation(id, request);
         return ResponseEntity.ok(updated);
+    }
+
+    /**
+     * Updates the status of an existing parking reservation (e.g., cancel or confirm).
+     *
+     * @param reservationId ID of the reservation to update
+     * @param request payload containing the new status
+     * @return 200 OK with the updated reservation ID and status
+     */
+    @PutMapping("/{reservationId}/status")
+    @Operation(
+        summary = "Update reservation status",
+        description = "Updates the status of an existing reservation (e.g., cancel or confirm)."
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Reservation status successfully updated",
+        content = @Content(schema = @Schema(implementation = ReservationStatusResponse.class))
+    )
+    @ApiResponse(
+        responseCode = "400",
+        description = "Validation failed or illegal status transition",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    @ApiResponse(
+        responseCode = "404",
+        description = "Reservation not found",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    @ApiResponse(
+        responseCode = "409",
+        description = "Conflict: parking spot is already reserved for this time window",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    public ResponseEntity<ReservationStatusResponse> updateReservationStatus(
+        @PathVariable Long reservationId,
+        @Valid @RequestBody UpdateReservationStatusRequest request
+    ) {
+        ReservationStatusResponse response = reservationService.updateReservationStatus(reservationId, request.status());
+        return ResponseEntity.ok(response);
     }
 
     /**
