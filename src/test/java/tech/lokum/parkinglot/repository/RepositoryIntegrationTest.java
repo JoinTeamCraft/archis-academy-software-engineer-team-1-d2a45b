@@ -17,7 +17,6 @@ import tech.lokum.parkinglot.entity.PaymentStatus;
 import tech.lokum.parkinglot.entity.Reservation;
 import tech.lokum.parkinglot.entity.ReservationStatus;
 import tech.lokum.parkinglot.entity.Role;
-import tech.lokum.parkinglot.entity.SpotStatus;
 import tech.lokum.parkinglot.entity.User;
 import tech.lokum.parkinglot.entity.Vehicle;
 import tech.lokum.parkinglot.entity.VehicleType;
@@ -190,5 +189,20 @@ class RepositoryIntegrationTest {
         assertThat(byIdWithRes).isPresent();
         assertThat(byIdWithRes.get().getReservation().getId()).isEqualTo(res.getId());
         assertThat(byIdWithRes.get().getCurrency()).isEqualTo("USD");
+
+        List<Payment> allFiltered = paymentRepository.findPaymentsWithFilters(null, null);
+        assertThat(allFiltered).contains(payment);
+
+        List<Payment> statusFiltered = paymentRepository.findPaymentsWithFilters(PaymentStatus.SUCCESS, null);
+        assertThat(statusFiltered).contains(payment);
+
+        List<Payment> resFiltered = paymentRepository.findPaymentsWithFilters(null, res.getId());
+        assertThat(resFiltered).contains(payment);
+
+        List<Payment> bothFiltered = paymentRepository.findByStatusAndReservationId(PaymentStatus.SUCCESS, res.getId());
+        assertThat(bothFiltered).contains(payment);
+
+        List<Payment> mismatchFiltered = paymentRepository.findPaymentsWithFilters(PaymentStatus.FAILED, res.getId());
+        assertThat(mismatchFiltered).doesNotContain(payment);
     }
 }

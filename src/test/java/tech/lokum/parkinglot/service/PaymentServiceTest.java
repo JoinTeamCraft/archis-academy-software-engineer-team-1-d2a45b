@@ -7,6 +7,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import tech.lokum.parkinglot.dto.PaymentResponse;
 import tech.lokum.parkinglot.entity.ParkingLot;
 import tech.lokum.parkinglot.entity.ParkingSpot;
@@ -134,5 +138,65 @@ class PaymentServiceTest {
         assertThatThrownBy(() -> paymentService.getPaymentById(-10L))
             .isInstanceOf(BadRequestException.class)
             .hasMessageContaining("Payment ID must be a positive number");
+    }
+
+    @Test
+    @DisplayName("getAllPayments without filters should return all payments")
+    void shouldReturnAllPaymentsWithoutFilters() {
+        when(paymentRepository.findPaymentsWithFilters(null, null)).thenReturn(java.util.List.of(payment));
+
+        java.util.List<PaymentResponse> results = paymentService.getAllPayments(null, null);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).paymentId()).isEqualTo(301L);
+        verify(paymentRepository).findPaymentsWithFilters(null, null);
+    }
+
+    @Test
+    @DisplayName("getAllPayments with status filter should delegate to repository")
+    void shouldFilterPaymentsByStatus() {
+        when(paymentRepository.findPaymentsWithFilters(PaymentStatus.SUCCESS, null)).thenReturn(java.util.List.of(payment));
+
+        java.util.List<PaymentResponse> results = paymentService.getAllPayments(PaymentStatus.SUCCESS, null);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).status()).isEqualTo(PaymentStatus.SUCCESS);
+        verify(paymentRepository).findPaymentsWithFilters(PaymentStatus.SUCCESS, null);
+    }
+
+    @Test
+    @DisplayName("getAllPayments with reservationId filter should delegate to repository")
+    void shouldFilterPaymentsByReservationId() {
+        when(paymentRepository.findPaymentsWithFilters(null, 501L)).thenReturn(java.util.List.of(payment));
+
+        java.util.List<PaymentResponse> results = paymentService.getAllPayments(null, 501L);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).reservationId()).isEqualTo(501L);
+        verify(paymentRepository).findPaymentsWithFilters(null, 501L);
+    }
+
+    @Test
+    @DisplayName("getAllPayments with both status and reservationId filters should delegate to repository")
+    void shouldFilterPaymentsByBothStatusAndReservationId() {
+        when(paymentRepository.findPaymentsWithFilters(PaymentStatus.SUCCESS, 501L)).thenReturn(java.util.List.of(payment));
+
+        java.util.List<PaymentResponse> results = paymentService.getAllPayments(PaymentStatus.SUCCESS, 501L);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).paymentId()).isEqualTo(301L);
+        verify(paymentRepository).findPaymentsWithFilters(PaymentStatus.SUCCESS, 501L);
+    }
+
+    @Test
+    @DisplayName("getAllPayments with pagination should return paginated response")
+    void shouldReturnPaginatedPayments() {
+        Pageable pageable = PageRequest.of(0, 10);
+        when(paymentRepository.findAll(pageable)).thenReturn(new PageImpl<>(java.util.List.of(payment), pageable, 1));
+
+        Page<PaymentResponse> page = paymentService.getAllPayments(null, null, pageable);
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent().get(0).paymentId()).isEqualTo(301L);
     }
 }

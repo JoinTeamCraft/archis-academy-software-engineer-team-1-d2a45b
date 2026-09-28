@@ -107,6 +107,54 @@ public record ReservationResponse(
         );
     }
 
+    /**
+     * Overload supporting calls with explicit reservationId as the second parameter.
+     */
+    public ReservationResponse(
+        Long id,
+        Long reservationId,
+        Long userId,
+        String userEmail,
+        String userName,
+        Long vehicleId,
+        String vehicleLicensePlate,
+        VehicleType vehicleType,
+        Long parkingSpotId,
+        String spotNumber,
+        Integer floorNumber,
+        Long parkingLotId,
+        String parkingLotName,
+        Instant startTime,
+        Instant endTime,
+        Instant actualEntryTime,
+        Instant actualExitTime,
+        BigDecimal totalAmount,
+        ReservationStatus status,
+        Instant createdAt
+    ) {
+        this(
+            id != null ? id : reservationId,
+            userId,
+            userEmail,
+            userName,
+            vehicleId,
+            vehicleLicensePlate,
+            vehicleType,
+            parkingSpotId,
+            spotNumber,
+            floorNumber,
+            parkingLotId,
+            parkingLotName,
+            startTime,
+            endTime,
+            actualEntryTime,
+            actualExitTime,
+            totalAmount,
+            status,
+            createdAt
+        );
+    }
+
     @JsonProperty("reservationId")
     @Schema(description = "Alias reservation ID", example = "501")
     public Long getReservationId() {

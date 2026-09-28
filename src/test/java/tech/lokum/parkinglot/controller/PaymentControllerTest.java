@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -17,10 +19,15 @@ import tech.lokum.parkinglot.exception.ResourceNotFoundException;
 import tech.lokum.parkinglot.service.PaymentService;
 
 import java.math.BigDecimal;
+import java.util.List;
 
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -86,5 +93,88 @@ class PaymentControllerTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.message").value("Payment ID must be a positive number"));
+    }
+
+    @Test
+    @DisplayName("GET /api/payments without filters should return 200 OK and all payments list")
+    void shouldReturnAllPayments() throws Exception {
+        PaymentResponse response = new PaymentResponse(
+            301L,
+            501L,
+            BigDecimal.valueOf(25.00),
+            PaymentMethod.CREDIT_CARD,
+            "USD",
+            PaymentStatus.SUCCESS,
+            "STRIPE123456"
+        );
+
+        when(paymentService.getAllPayments(null, null)).thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/payments")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].paymentId").value(301))
+            .andExpect(jsonPath("$[0].reservationId").value(501))
+            .andExpect(jsonPath("$[0].amount").value(25.00))
+            .andExpect(jsonPath("$[0].paymentMethod").value("CREDIT_CARD"))
+            .andExpect(jsonPath("$[0].currency").value("USD"))
+            .andExpect(jsonPath("$[0].status").value("SUCCESS"))
+            .andExpect(jsonPath("$[0].confirmationNumber").value("STRIPE123456"));
+    }
+
+    @Test
+    @DisplayName("GET /api/payments with status and reservationId filters should filter results")
+    void shouldReturnFilteredPayments() throws Exception {
+        PaymentResponse response = new PaymentResponse(
+            301L,
+            501L,
+            BigDecimal.valueOf(25.00),
+            PaymentMethod.CREDIT_CARD,
+            "USD",
+            PaymentStatus.SUCCESS,
+            "STRIPE123456"
+        );
+
+        when(paymentService.getAllPayments(PaymentStatus.SUCCESS, 501L)).thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/payments")
+                .param("status", "SUCCESS")
+                .param("reservationId", "501")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].paymentId").value(301))
+            .andExpect(jsonPath("$[0].status").value("SUCCESS"));
+    }
+
+    @Test
+    @DisplayName("GET /api/payments with pagination parameters should return 200 OK with pagination headers")
+    void shouldReturnPaginatedPaymentsWithHeaders() throws Exception {
+        PaymentResponse response = new PaymentResponse(
+            301L,
+            501L,
+            BigDecimal.valueOf(25.00),
+            PaymentMethod.CREDIT_CARD,
+            "USD",
+            PaymentStatus.SUCCESS,
+            "STRIPE123456"
+        );
+
+        when(paymentService.getAllPayments(eq(null), eq(null), any()))
+            .thenReturn(new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1));
+
+        mockMvc.perform(get("/api/payments")
+                .param("page", "0")
+                .param("size", "10")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(header().string("X-Total-Count", "1"))
+            .andExpect(header().string("X-Total-Pages", "1"))
+            .andExpect(header().string("X-Current-Page", "0"))
+            .andExpect(header().string("X-Page-Size", "10"))
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].paymentId").value(301));
     }
 }
