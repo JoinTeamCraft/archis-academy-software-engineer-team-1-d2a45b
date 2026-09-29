@@ -21,7 +21,7 @@ import tech.lokum.parkinglot.dto.UserResponse;
 import tech.lokum.parkinglot.service.UserService;
 
 /**
- * Controller for managing users with Role-Based Access Control (RBAC).
+ * Controller for managing users with Role-Based Access Control (RBAC) [AR-37].
  */
 @RestController
 @RequestMapping("/api/users")
