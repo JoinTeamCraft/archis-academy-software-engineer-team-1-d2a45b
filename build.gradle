@@ -24,6 +24,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.springframework:spring-context-support'
+    implementation 'jakarta.mail:jakarta.mail-api'
+    implementation 'org.eclipse.angus:angus-mail'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1'
 
     implementation 'org.springframework.boot:spring-boot-starter-security'
