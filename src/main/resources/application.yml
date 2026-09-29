@@ -37,6 +37,11 @@ app:
   mail:
     from: ${MAIL_FROM:noreply@parkinglot.lokum.tech}
     enabled: ${MAIL_ENABLED:true}
+  payment:
+    stripe:
+      enabled: ${STRIPE_ENABLED:false}
+      api-key: ${STRIPE_API_KEY:sk_test_mock}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_test_mock}
 
 server:
   port: ${PORT:8080}

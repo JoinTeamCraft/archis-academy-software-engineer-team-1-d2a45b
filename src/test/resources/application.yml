@@ -6,3 +6,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+
+app:
+  payment:
+    stripe:
+      enabled: false
+      api-key: sk_test_mock
+      webhook-secret: whsec_test_mock

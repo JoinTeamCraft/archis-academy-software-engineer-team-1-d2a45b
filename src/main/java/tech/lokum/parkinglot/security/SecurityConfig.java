@@ -82,7 +82,7 @@ public class SecurityConfig {
                                 "/test/**"
                         ).permitAll()
                         // Public payment notification webhook from external gateways
-                        .requestMatchers(HttpMethod.POST, "/api/payments/notifications").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payments/notifications", "/api/payments/webhook").permitAll()
 
                         // Role-based security rules
                         // Only admins can delete users
