@@ -2,10 +2,13 @@ package tech.lokum.parkinglot.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tech.lokum.parkinglot.notification.event.BookingConfirmationEvent;
 import tech.lokum.parkinglot.dto.CreateReservationRequest;
 import tech.lokum.parkinglot.dto.ReservationResponse;
 import tech.lokum.parkinglot.dto.ReservationStatusResponse;
@@ -52,6 +55,22 @@ public class ReservationService {
     private final UserRepository userRepository;
     private final VehicleRepository vehicleRepository;
     private final ParkingSpotRepository parkingSpotRepository;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ReservationService(
+        ReservationRepository reservationRepository,
+        UserRepository userRepository,
+        VehicleRepository vehicleRepository,
+        ParkingSpotRepository parkingSpotRepository,
+        ObjectProvider<ApplicationEventPublisher> eventPublisherProvider
+    ) {
+        this.reservationRepository = reservationRepository;
+        this.userRepository = userRepository;
+        this.vehicleRepository = vehicleRepository;
+        this.parkingSpotRepository = parkingSpotRepository;
+        this.eventPublisher = eventPublisherProvider != null ? eventPublisherProvider.getIfAvailable() : null;
+    }
 
     public ReservationService(
         ReservationRepository reservationRepository,
@@ -59,10 +78,7 @@ public class ReservationService {
         VehicleRepository vehicleRepository,
         ParkingSpotRepository parkingSpotRepository
     ) {
-        this.reservationRepository = reservationRepository;
-        this.userRepository = userRepository;
-        this.vehicleRepository = vehicleRepository;
-        this.parkingSpotRepository = parkingSpotRepository;
+        this(reservationRepository, userRepository, vehicleRepository, parkingSpotRepository, null);
     }
 
     /**
@@ -126,6 +142,9 @@ public class ReservationService {
 
         Reservation saved = reservationRepository.save(reservation);
         log.info("Successfully created reservation ID {} with total amount {}", saved.getId(), saved.getTotalAmount());
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new BookingConfirmationEvent(saved));
+        }
         return ReservationResponse.fromEntity(saved);
     }
 

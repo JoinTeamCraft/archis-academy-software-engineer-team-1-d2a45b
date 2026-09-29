@@ -1,5 +1,8 @@
 package tech.lokum.parkinglot.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,6 +17,7 @@ import tech.lokum.parkinglot.exception.BadRequestException;
 import tech.lokum.parkinglot.exception.ConflictException;
 import tech.lokum.parkinglot.exception.ResourceNotFoundException;
 import tech.lokum.parkinglot.exception.ValidationException;
+import tech.lokum.parkinglot.notification.event.UserRegistrationEvent;
 import tech.lokum.parkinglot.repository.UserRepository;
 
 import java.util.ArrayList;
@@ -27,10 +31,21 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    @Autowired
+    public UserService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            ObjectProvider<ApplicationEventPublisher> eventPublisherProvider
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.eventPublisher = eventPublisherProvider != null ? eventPublisherProvider.getIfAvailable() : null;
+    }
+
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this(userRepository, passwordEncoder, null);
     }
 
     /**
@@ -93,6 +108,9 @@ public class UserService {
         );
 
         User saved = userRepository.save(user);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new UserRegistrationEvent(saved));
+        }
         return UserResponse.fromEntity(saved);
     }
 
@@ -144,6 +162,9 @@ public class UserService {
         );
 
         User saved = userRepository.save(user);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new UserRegistrationEvent(saved));
+        }
         return UserResponse.fromEntity(saved);
     }
 }
