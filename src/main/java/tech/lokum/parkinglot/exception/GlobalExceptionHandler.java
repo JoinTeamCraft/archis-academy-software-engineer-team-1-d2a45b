@@ -12,8 +12,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import tech.lokum.parkinglot.dto.ErrorResponse;
+import tech.lokum.parkinglot.dto.ValidationErrorResponse;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -62,20 +65,35 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ValidationErrorResponse> handleValidationException(ValidationException ex, HttpServletRequest request) {
+        log.warn("Validation failed for {}: {}", request.getRequestURI(), ex.getDetails());
+        ValidationErrorResponse body = new ValidationErrorResponse(
+            "Validation failed",
+            ex.getDetails()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex, HttpServletRequest request) {
         Map<String, String> errors = new LinkedHashMap<>();
+        List<String> details = new ArrayList<>();
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());
+            if (fieldError.getDefaultMessage() != null && !details.contains(fieldError.getDefaultMessage())) {
+                details.add(fieldError.getDefaultMessage());
+            }
         }
         log.warn("Validation failed for {}: {}", request.getRequestURI(), errors);
 
         ErrorResponse body = ErrorResponse.of(
             HttpStatus.BAD_REQUEST.value(),
-            HttpStatus.BAD_REQUEST.getReasonPhrase(),
+            "Validation failed",
             "Validation failed for one or more fields",
             request.getRequestURI(),
-            errors
+            errors,
+            details
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }

@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -60,6 +62,11 @@ class GlobalExceptionHandlerTest {
 
         @PostMapping("/validation")
         public void validateBody(@Valid @RequestBody SampleRequest request) {}
+
+        @GetMapping("/custom-validation")
+        public void throwCustomValidation() {
+            throw new ValidationException(List.of("Username must be unique", "Password must contain at least 8 characters"));
+        }
     }
 
     @Test
@@ -104,8 +111,19 @@ class GlobalExceptionHandlerTest {
                 .content("{\"name\": \"\"}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.validationErrors.name").value("Field name cannot be blank"));
+            .andExpect(jsonPath("$.error").value("Validation failed"))
+            .andExpect(jsonPath("$.validationErrors.name").value("Field name cannot be blank"))
+            .andExpect(jsonPath("$.details[0]").value("Field name cannot be blank"));
+    }
+
+    @Test
+    @DisplayName("Should return 400 with details on ValidationException")
+    void shouldReturn400ForCustomValidationException() throws Exception {
+        mockMvc.perform(get("/test/errors/custom-validation"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("Validation failed"))
+            .andExpect(jsonPath("$.details[0]").value("Username must be unique"))
+            .andExpect(jsonPath("$.details[1]").value("Password must contain at least 8 characters"));
     }
 
     @Test

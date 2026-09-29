@@ -154,4 +154,53 @@ class UserServiceTest {
         assertThrows(BadRequestException.class, () ->
                 userService.createUser("valid@example.com", "", "Name", null, Role.USER));
     }
+
+    @Test
+    @DisplayName("registerUser succeeds when request payload is valid")
+    void testRegisterUserSuccess() {
+        tech.lokum.parkinglot.dto.RegisterRequest request = new tech.lokum.parkinglot.dto.RegisterRequest(
+                "john_doe", "john@example.com", "Password123!", "John Doe", "+1234567890", Role.USER);
+
+        when(userRepository.existsByUsernameIgnoreCase("john_doe")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase("john_doe")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase("john@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("Password123!")).thenReturn("encodedPassword123!");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setId(100L);
+            return u;
+        });
+
+        UserResponse response = userService.registerUser(request);
+
+        assertNotNull(response);
+        assertEquals(100L, response.id());
+        assertEquals("john@example.com", response.email());
+        assertEquals(Role.USER, response.role());
+    }
+
+    @Test
+    @DisplayName("registerUser throws ValidationException when username already taken and password too short")
+    void testRegisterUserCustomValidationFailure() {
+        tech.lokum.parkinglot.dto.RegisterRequest request = new tech.lokum.parkinglot.dto.RegisterRequest(
+                "taken_user", "new@example.com", "short", "John Doe", null, Role.USER);
+
+        when(userRepository.existsByUsernameIgnoreCase("taken_user")).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase("new@example.com")).thenReturn(false);
+
+        tech.lokum.parkinglot.exception.ValidationException ex = assertThrows(
+                tech.lokum.parkinglot.exception.ValidationException.class,
+                () -> userService.registerUser(request)
+        );
+
+        org.assertj.core.api.Assertions.assertThat(ex.getDetails())
+                .contains("Username must be unique")
+                .contains("Password must contain at least 8 characters");
+    }
+
+    @Test
+    @DisplayName("registerUser throws BadRequestException when request is null")
+    void testRegisterUserNullRequest() {
+        assertThrows(BadRequestException.class, () -> userService.registerUser(null));
+    }
 }
