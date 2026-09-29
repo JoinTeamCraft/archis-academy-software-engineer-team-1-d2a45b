@@ -92,6 +92,8 @@ public class SecurityConfig {
                         // Admin-specific endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/manager/**").hasAnyRole("ADMIN", "MANAGER")
+                        // Reports endpoints: accessible only by authorized roles (ADMIN, MANAGER, OPERATOR)
+                        .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "MANAGER", "OPERATOR")
 
                         // Permit other existing endpoints for backwards compatibility with previous tickets
                         .anyRequest().permitAll()
