@@ -19,11 +19,9 @@ import tech.lokum.parkinglot.report.model.UserActivityReportData;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
 
 /**
  * Exporter generating styled, professional PDF reports using OpenPDF.
@@ -43,7 +41,6 @@ public class PdfReportExporter implements ReportExporter {
     private static final Font SECTION_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, new Color(15, 23, 42));
     private static final Font TH_FONT = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, new Color(30, 41, 59));
     private static final Font TD_FONT = FontFactory.getFont(FontFactory.HELVETICA, 8, new Color(51, 65, 85));
-    private static final Font META_FONT = FontFactory.getFont(FontFactory.HELVETICA, 9, new Color(71, 85, 105));
 
     @Override
     public ReportFormat getFormat() {
