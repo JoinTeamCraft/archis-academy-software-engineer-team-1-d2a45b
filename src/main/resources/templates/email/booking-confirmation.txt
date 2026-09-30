@@ -1,0 +1,25 @@
+=======================================================
+PARKING LOT SYSTEM - BOOKING CONFIRMATION
+=======================================================
+
+Hello {{fullName}},
+
+Your parking space reservation has been successfully confirmed!
+
+--- RESERVATION DETAILS ---
+Reservation ID: #{{reservationId}}
+Status:         {{status}}
+Parking Lot:    {{lotName}}
+Spot Number:    {{spotNumber}}
+Vehicle Plate:  {{licensePlate}}
+Start Time:     {{startTime}}
+End Time:       {{endTime}}
+Total Price:    {{totalAmount}}
+
+Please ensure you park only in spot {{spotNumber}} during your reserved timeframe.
+
+For assistance or adjustments, please contact our support team at {{supportEmail}}.
+
+Best regards,
+The Parking Lot System Team
+(c) {{year}} Parking Lot System. All rights reserved.
