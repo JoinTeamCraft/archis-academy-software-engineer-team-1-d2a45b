@@ -2,6 +2,8 @@ package tech.lokum.parkinglot.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +16,7 @@ import tech.lokum.parkinglot.entity.Payment;
 import tech.lokum.parkinglot.entity.PaymentStatus;
 import tech.lokum.parkinglot.exception.BadRequestException;
 import tech.lokum.parkinglot.exception.ResourceNotFoundException;
+import tech.lokum.parkinglot.notification.event.PaymentReceiptEvent;
 import tech.lokum.parkinglot.repository.PaymentRepository;
 
 import java.time.Instant;
@@ -28,9 +31,19 @@ public class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
     private final PaymentRepository paymentRepository;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public PaymentService(
+            PaymentRepository paymentRepository,
+            ObjectProvider<ApplicationEventPublisher> eventPublisherProvider
+    ) {
+        this.paymentRepository = paymentRepository;
+        this.eventPublisher = eventPublisherProvider != null ? eventPublisherProvider.getIfAvailable() : null;
+    }
 
     public PaymentService(PaymentRepository paymentRepository) {
-        this.paymentRepository = paymentRepository;
+        this(paymentRepository, null);
     }
 
     /**
@@ -125,7 +138,8 @@ public class PaymentService {
         log.info("Processing payment notification for payment ID {}: status={}, confirmationNumber={}",
             request.paymentId(), request.status(), request.confirmationNumber());
 
-        Payment payment = paymentRepository.findById(request.paymentId())
+        Payment payment = paymentRepository.findByIdWithReservation(request.paymentId())
+            .or(() -> paymentRepository.findById(request.paymentId()))
             .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", request.paymentId()));
 
         payment.setStatus(request.status());
@@ -148,6 +162,11 @@ public class PaymentService {
         );
 
         log.info("Successfully updated payment ID {} to status {}", payment.getId(), payment.getStatus());
+
+        if (request.status() == PaymentStatus.SUCCESS && eventPublisher != null) {
+            eventPublisher.publishEvent(new PaymentReceiptEvent(payment));
+        }
+
         return PaymentNotificationResponse.success();
     }
 }
