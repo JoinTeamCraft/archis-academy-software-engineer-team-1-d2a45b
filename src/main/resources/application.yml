@@ -10,9 +10,9 @@ spring:
       maximum-pool-size: ${DB_POOL_SIZE:10}
       connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:10000}
   jpa:
-    # Fine for a hackathon. Switch to validate once you add Flyway (PLS-045).
+    # Flyway manages the schema; Hibernate only validates on startup.
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
@@ -21,6 +21,11 @@ spring:
           batch_size: 25
         order_inserts: true
         order_updates: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: '0'
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:1025}
