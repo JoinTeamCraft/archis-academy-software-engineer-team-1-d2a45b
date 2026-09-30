@@ -6,9 +6,14 @@ import tech.lokum.parkinglot.entity.Payment;
 import tech.lokum.parkinglot.entity.PaymentStatus;
 import tech.lokum.parkinglot.entity.Reservation;
 import tech.lokum.parkinglot.entity.User;
+import tech.lokum.parkinglot.exception.BadRequestException;
+import tech.lokum.parkinglot.exception.ResourceNotFoundException;
 import tech.lokum.parkinglot.repository.PaymentRepository;
 import tech.lokum.parkinglot.repository.ReservationRepository;
 import tech.lokum.parkinglot.repository.UserRepository;
+import tech.lokum.parkinglot.report.dto.ReportRequest;
+import tech.lokum.parkinglot.report.dto.ReportResponse;
+import tech.lokum.parkinglot.report.entity.ReportMetadata;
 import tech.lokum.parkinglot.report.exporter.ReportExporter;
 import tech.lokum.parkinglot.report.model.BookingTrendsReportData;
 import tech.lokum.parkinglot.report.model.GeneratedReport;
@@ -16,12 +21,15 @@ import tech.lokum.parkinglot.report.model.PaymentSummaryReportData;
 import tech.lokum.parkinglot.report.model.ReportFormat;
 import tech.lokum.parkinglot.report.model.ReportType;
 import tech.lokum.parkinglot.report.model.UserActivityReportData;
+import tech.lokum.parkinglot.report.repository.ReportMetadataRepository;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
@@ -30,7 +38,8 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
- * Service implementation for fetching, aggregating, and exporting system reports.
+ * Service implementation for fetching, aggregating, exporting system reports,
+ * and persisting report metadata records.
  */
 @Service
 @Transactional(readOnly = true)
@@ -43,22 +52,74 @@ public class ReportServiceImpl implements ReportService {
     private final UserRepository userRepository;
     private final ReservationRepository reservationRepository;
     private final PaymentRepository paymentRepository;
+    private final ReportMetadataRepository reportMetadataRepository;
     private final Map<ReportFormat, ReportExporter> exporters = new EnumMap<>(ReportFormat.class);
 
     public ReportServiceImpl(
             UserRepository userRepository,
             ReservationRepository reservationRepository,
             PaymentRepository paymentRepository,
+            ReportMetadataRepository reportMetadataRepository,
             List<ReportExporter> exporterList
     ) {
         this.userRepository = userRepository;
         this.reservationRepository = reservationRepository;
         this.paymentRepository = paymentRepository;
+        this.reportMetadataRepository = reportMetadataRepository;
         if (exporterList != null) {
             for (ReportExporter exporter : exporterList) {
                 this.exporters.put(exporter.getFormat(), exporter);
             }
         }
+    }
+
+    @Override
+    @Transactional
+    public ReportResponse requestReport(ReportRequest request, String requestedBy) {
+        if (request == null || request.getReportType() == null || request.getReportType().isBlank()) {
+            throw new BadRequestException("reportType is required");
+        }
+
+        ReportType reportType = resolveReportType(request.getReportType());
+        ReportFormat reportFormat = resolveReportFormat(request.getFormat());
+
+        Instant start = parseDate(request.getStartDate(), false);
+        Instant end = parseDate(request.getEndDate(), true);
+
+        GeneratedReport generated = generateReport(reportType, reportFormat, start, end);
+
+        // Customize file name if specific alias was passed (e.g. monthlyRevenue)
+        String fileName = generated.getFileName();
+        if ("monthlyrevenue".equalsIgnoreCase(request.getReportType().replaceAll("[_-]", ""))) {
+            fileName = String.format("monthly_revenue_report_%s.%s", FILE_DATE_FORMATTER.format(Instant.now()), reportFormat.getExtension());
+        }
+
+        ReportMetadata metadata = new ReportMetadata(
+                request.getReportType(),
+                reportFormat.name(),
+                "generated",
+                request.getStartDate(),
+                request.getEndDate(),
+                fileName,
+                generated.getContentType(),
+                null,
+                requestedBy != null ? requestedBy : "system",
+                generated.getContent()
+        );
+
+        metadata = reportMetadataRepository.save(metadata);
+
+        String downloadLink = "/api/reports/download/" + metadata.getId();
+        metadata.setDownloadLink(downloadLink);
+        metadata = reportMetadataRepository.save(metadata);
+
+        return new ReportResponse(metadata.getId(), metadata.getStatus(), downloadLink);
+    }
+
+    @Override
+    public ReportMetadata getReportMetadata(Long reportId) {
+        return reportMetadataRepository.findById(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("Report not found with id: " + reportId));
     }
 
     @Override
@@ -105,7 +166,6 @@ public class ReportServiceImpl implements ReportService {
         List<User> users = userRepository.findUsersForReport(startDate, endDate);
         List<Reservation> reservations = reservationRepository.findReservationsForReport(startDate, endDate);
 
-        // Map reservations and spend per user
         Map<Long, Long> reservationsCountByUser = reservations.stream()
                 .filter(r -> r.getUser() != null && r.getUser().getId() != null)
                 .collect(Collectors.groupingBy(r -> r.getUser().getId(), Collectors.counting()));
@@ -260,6 +320,53 @@ public class ReportServiceImpl implements ReportService {
                 .toList();
 
         return new PaymentSummaryReportData(startDate, endDate, totalTransactions, totalRevenue, paymentsByStatus, revenueByMethod, revenueByPeriod, items);
+    }
+
+    private ReportType resolveReportType(String typeStr) {
+        String normalized = typeStr.trim().replaceAll("[_-]", "").toLowerCase();
+        return switch (normalized) {
+            case "monthlyrevenue", "revenue", "paymentsummary", "payments" -> ReportType.PAYMENT_SUMMARY;
+            case "useractivity", "users", "activity" -> ReportType.USER_ACTIVITY;
+            case "bookingtrends", "bookings", "reservations" -> ReportType.BOOKING_TRENDS;
+            default -> {
+                try {
+                    yield ReportType.valueOf(typeStr.trim().toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    throw new BadRequestException("Unsupported reportType: '" + typeStr + "'. Expected monthlyRevenue, userActivity, bookingTrends, or paymentSummary.");
+                }
+            }
+        };
+    }
+
+    private ReportFormat resolveReportFormat(String formatStr) {
+        if (formatStr == null || formatStr.isBlank()) {
+            return ReportFormat.CSV;
+        }
+        try {
+            return ReportFormat.valueOf(formatStr.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Unsupported report format: '" + formatStr + "'. Expected CSV or PDF.");
+        }
+    }
+
+    private Instant parseDate(String dateStr, boolean isEndOfDay) {
+        if (dateStr == null || dateStr.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(dateStr.trim());
+        } catch (DateTimeParseException ignored) {
+            try {
+                LocalDate localDate = LocalDate.parse(dateStr.trim());
+                if (isEndOfDay) {
+                    return localDate.atTime(23, 59, 59).atZone(ZoneOffset.UTC).toInstant();
+                } else {
+                    return localDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+                }
+            } catch (DateTimeParseException e) {
+                throw new BadRequestException("Invalid date format: '" + dateStr + "'. Expected ISO-8601 (e.g., '2025-01-01' or '2025-01-01T00:00:00Z').");
+            }
+        }
     }
 
     private ReportExporter getExporter(ReportFormat format) {
