@@ -50,7 +50,6 @@ public class ReportMetadata extends BaseEntity {
     @Column(name = "requested_by", length = 120)
     private String requestedBy;
 
-    @Lob
     @Basic(fetch = FetchType.LAZY)
     @Column(name = "content", nullable = false)
     private byte[] content;

@@ -5,7 +5,12 @@ spring:
     password:
   jpa:
     hibernate:
+      # Tests use H2 with Hibernate-managed schema.
+      # Flyway migrations target PostgreSQL and are tested separately.
       ddl-auto: create-drop
+  flyway:
+    # Disabled for H2 tests — migrations use PostgreSQL-specific syntax.
+    enabled: false
 
 app:
   payment:
