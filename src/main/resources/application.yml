@@ -66,11 +66,16 @@ management:
 
 springdoc:
   api-docs:
-    path: /v3/api-docs
+    path: /api-docs
+    enabled: true
   swagger-ui:
     path: /swagger-ui.html
     tags-sorter: alpha
     operations-sorter: method
+    display-request-duration: true
+    try-it-out-enabled: true
+    persist-authorization: true
+    doc-expansion: none
 
 logging:
   level:
