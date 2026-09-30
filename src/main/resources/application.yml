@@ -47,6 +47,13 @@ app:
       enabled: ${STRIPE_ENABLED:false}
       api-key: ${STRIPE_API_KEY:sk_test_mock}
       webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_test_mock}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:8080}
+    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD}
+    allowed-headers: ${CORS_ALLOWED_HEADERS:Authorization,Content-Type,Accept,Origin,X-Requested-With,Access-Control-Request-Method,Access-Control-Request-Headers,Stripe-Signature}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:Authorization,Content-Disposition,X-Total-Count,X-Total-Pages,X-Current-Page,X-Page-Size}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+    max-age: ${CORS_MAX_AGE:3600}
 
 server:
   port: ${PORT:8080}
