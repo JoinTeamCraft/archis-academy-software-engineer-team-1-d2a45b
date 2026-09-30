@@ -45,13 +45,14 @@ public class FeedbackController {
     @Operation(
         summary = "Submit feedback",
         description = "Saves feedback about the application or service. The rating must be between 1 and 5. "
-            + "Users can only submit feedback as themselves; admins can submit on behalf of any user."
+            + "The userId must be the caller's own id unless the caller is an admin, who can submit on behalf of any user; "
+            + "otherwise the request is rejected with 403."
     )
     @ApiResponse(responseCode = "201", description = "Feedback submitted successfully",
         content = @Content(schema = @Schema(implementation = FeedbackResponse.class)))
     @ApiResponse(responseCode = "400", description = "Validation error", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Authentication required", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ApiResponse(responseCode = "403", description = "Submitting feedback on behalf of another user", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "A non-admin caller sent a userId other than their own", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "User not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<FeedbackResponse> submitFeedback(
         @Valid @RequestBody CreateFeedbackRequest request,

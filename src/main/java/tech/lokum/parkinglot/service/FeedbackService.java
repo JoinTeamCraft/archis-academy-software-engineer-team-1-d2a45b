@@ -15,6 +15,7 @@ import tech.lokum.parkinglot.exception.ResourceNotFoundException;
 import tech.lokum.parkinglot.exception.ValidationException;
 import tech.lokum.parkinglot.repository.FeedbackRepository;
 import tech.lokum.parkinglot.repository.UserRepository;
+import tech.lokum.parkinglot.security.UserPrincipal;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +47,7 @@ public class FeedbackService {
      * @param caller the authenticated caller; must be the user in the request, or an admin
      * @return saved feedback
      * @throws ForbiddenException if there is no caller, or the caller submits feedback on behalf of another user
-     * @throws ValidationException if a field is missing, the rating is not between 1 and 5, or the text is blank or too long
+     * @throws ValidationException if the body or a field is missing, the rating is not between 1 and 5, or the text is blank or too long
      * @throws ResourceNotFoundException if the user does not exist
      */
     @Transactional
@@ -71,6 +72,9 @@ public class FeedbackService {
     }
 
     private void validate(CreateFeedbackRequest request) {
+        if (request == null) {
+            throw new ValidationException("Invalid feedback", List.of("Request body is required"));
+        }
         List<String> errors = new ArrayList<>();
         if (request.userId() == null) {
             errors.add("User ID is required");
@@ -94,6 +98,17 @@ public class FeedbackService {
     private boolean isOwnerOrAdmin(User user, Authentication caller) {
         boolean isAdmin = caller.getAuthorities().stream()
             .anyMatch(authority -> Role.ADMIN.getAuthority().equals(authority.getAuthority()));
-        return isAdmin || user.getEmail().equalsIgnoreCase(caller.getName());
+        return isAdmin || isSameUser(user, caller);
+    }
+
+    /**
+     * The JWT filter sets a {@link UserPrincipal} when the caller's account is loaded, so match on its id.
+     * When the account could not be loaded it falls back to the token subject, which is the caller's email.
+     */
+    private boolean isSameUser(User user, Authentication caller) {
+        if (caller.getPrincipal() instanceof UserPrincipal principal) {
+            return user.getId().equals(principal.getId());
+        }
+        return caller.getPrincipal() instanceof String email && user.getEmail().equalsIgnoreCase(email);
     }
 }

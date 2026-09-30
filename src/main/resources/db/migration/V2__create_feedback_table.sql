@@ -11,7 +11,7 @@ CREATE TABLE feedback (
     created_at     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_feedback_user   FOREIGN KEY (user_id) REFERENCES users (id),
+    CONSTRAINT fk_feedback_user   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
     CONSTRAINT chk_feedback_rating CHECK (rating BETWEEN 1 AND 5)
 );
 

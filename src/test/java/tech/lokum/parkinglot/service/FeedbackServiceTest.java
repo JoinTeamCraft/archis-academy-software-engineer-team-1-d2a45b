@@ -24,6 +24,7 @@ import tech.lokum.parkinglot.exception.ResourceNotFoundException;
 import tech.lokum.parkinglot.exception.ValidationException;
 import tech.lokum.parkinglot.repository.FeedbackRepository;
 import tech.lokum.parkinglot.repository.UserRepository;
+import tech.lokum.parkinglot.security.UserPrincipal;
 
 import java.time.Instant;
 import java.util.List;
@@ -61,6 +62,11 @@ class FeedbackServiceTest {
 
     private static Authentication caller(String email, Role role) {
         return new UsernamePasswordAuthenticationToken(email, null, List.of(new SimpleGrantedAuthority(role.getAuthority())));
+    }
+
+    private static Authentication principalCaller(Long id, String email, Role role) {
+        UserPrincipal principal = new UserPrincipal(id, email, "hashed", role, true);
+        return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     }
 
     private void stubSave() {
@@ -235,5 +241,37 @@ class FeedbackServiceTest {
             new CreateFeedbackRequest(1L, "Great service!", 5), caller("Alice@Test.com", Role.CUSTOMER));
 
         assertThat(response.id()).isEqualTo(101L);
+    }
+
+    @Test
+    @DisplayName("submitFeedback should reject a missing request body")
+    void shouldRejectNullRequest() {
+        assertThatThrownBy(() -> feedbackService.submitFeedback(null, caller("alice@test.com", Role.CUSTOMER)))
+            .isInstanceOf(ValidationException.class)
+            .satisfies(ex -> assertThat(detailsOf(ex)).containsExactly("Request body is required"));
+        verifyNoInteractions(userRepository, feedbackRepository);
+    }
+
+    @Test
+    @DisplayName("submitFeedback should accept a caller whose loaded principal has the user's id")
+    void shouldMatchPrincipalById() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+        stubSave();
+
+        FeedbackResponse response = feedbackService.submitFeedback(
+            new CreateFeedbackRequest(1L, "Great service!", 5), principalCaller(1L, "alice@test.com", Role.CUSTOMER));
+
+        assertThat(response.userId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("submitFeedback should forbid a loaded principal with another id, even if the email matches")
+    void shouldForbidPrincipalWithOtherId() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+        CreateFeedbackRequest request = new CreateFeedbackRequest(1L, "Great service!", 5);
+
+        assertThatThrownBy(() -> feedbackService.submitFeedback(request, principalCaller(2L, "alice@test.com", Role.CUSTOMER)))
+            .isInstanceOf(ForbiddenException.class);
+        verify(feedbackRepository, never()).save(any());
     }
 }

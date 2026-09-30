@@ -1,5 +1,6 @@
 package tech.lokum.parkinglot.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,9 @@ import tech.lokum.parkinglot.repository.FeedbackRepository;
 import tech.lokum.parkinglot.repository.UserRepository;
 import tech.lokum.parkinglot.security.JwtService;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
@@ -32,6 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class FeedbackControllerTest {
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     private MockMvc mockMvc;
@@ -57,9 +62,12 @@ class FeedbackControllerTest {
         return "Bearer " + jwtService.generateToken(email, role);
     }
 
-    private static String body(Object userId, String feedbackText, Object rating) {
-        String text = feedbackText == null ? "null" : "\"" + feedbackText + "\"";
-        return String.format("{\"userId\": %s, \"feedbackText\": %s, \"rating\": %s}", userId, text, rating);
+    private static String body(Object userId, String feedbackText, Object rating) throws Exception {
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("userId", userId);
+        fields.put("feedbackText", feedbackText);
+        fields.put("rating", rating);
+        return objectMapper.writeValueAsString(fields);
     }
 
     @Test
@@ -163,5 +171,44 @@ class FeedbackControllerTest {
                 .content(body(999_999, "Great service!", 5)))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    @DisplayName("POST /api/feedback should keep quotes, backslashes and newlines in the feedback text")
+    void shouldKeepSpecialCharacters() throws Exception {
+        String text = "Said \"great\" \\ then\nleft";
+
+        mockMvc.perform(post("/api/feedback")
+                .header("Authorization", tokenFor(alice.getEmail(), Role.CUSTOMER))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body(alice.getId(), text, 4)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.feedbackText").value(text));
+    }
+
+    @Test
+    @DisplayName("POST /api/feedback should return 400 when the body is empty")
+    void shouldRejectEmptyBody() throws Exception {
+        mockMvc.perform(post("/api/feedback")
+                .header("Authorization", tokenFor(alice.getEmail(), Role.CUSTOMER))
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
+
+        assertThat(feedbackRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("Deleting a user should delete their feedback")
+    void shouldDeleteFeedbackWithUser() throws Exception {
+        mockMvc.perform(post("/api/feedback")
+                .header("Authorization", tokenFor(alice.getEmail(), Role.CUSTOMER))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body(alice.getId(), "Great service!", 5)))
+            .andExpect(status().isCreated());
+
+        userRepository.delete(alice);
+        userRepository.flush();
+
+        assertThat(feedbackRepository.count()).isZero();
     }
 }
