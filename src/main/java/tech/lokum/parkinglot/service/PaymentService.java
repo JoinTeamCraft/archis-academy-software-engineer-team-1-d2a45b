@@ -20,7 +20,6 @@ import tech.lokum.parkinglot.entity.Payment;
 import tech.lokum.parkinglot.entity.PaymentMethod;
 import tech.lokum.parkinglot.entity.PaymentStatus;
 import tech.lokum.parkinglot.entity.Reservation;
-import tech.lokum.parkinglot.entity.ReservationStatus;
 import tech.lokum.parkinglot.exception.BadRequestException;
 import tech.lokum.parkinglot.exception.ResourceNotFoundException;
 import tech.lokum.parkinglot.gateway.PaymentCallbackResult;

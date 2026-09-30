@@ -5,7 +5,12 @@ spring:
     password:
   jpa:
     hibernate:
+      # Tests use H2 with Hibernate-managed schema.
+      # Flyway migrations target PostgreSQL and are tested separately.
       ddl-auto: create-drop
+  flyway:
+    # Disabled for H2 tests — migrations use PostgreSQL-specific syntax.
+    enabled: false
 
 app:
   payment:
@@ -13,3 +18,19 @@ app:
       enabled: false
       api-key: sk_test_mock
       webhook-secret: whsec_test_mock
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:5173,http://localhost:8080
+    allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD
+    allowed-headers: Authorization,Content-Type,Accept,Origin,X-Requested-With,Access-Control-Request-Method,Access-Control-Request-Headers,Stripe-Signature
+    exposed-headers: Authorization,Content-Disposition,X-Total-Count,X-Total-Pages,X-Current-Page,X-Page-Size
+    allow-credentials: true
+    max-age: 3600
+
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
