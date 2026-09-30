@@ -13,10 +13,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 import tech.lokum.parkinglot.dto.PageResponse;
+import tech.lokum.parkinglot.dto.RegisterRequest;
 import tech.lokum.parkinglot.dto.UserResponse;
 import tech.lokum.parkinglot.service.UserService;
 
@@ -33,6 +37,23 @@ public class UserController {
 
     public UserController(UserService userService) {
         this.userService = userService;
+    }
+
+    /**
+     * Create a user. Restricted to ADMIN role.
+     */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Create user", description = "Creates a new user account with validation. Restricted to ADMIN role.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "User successfully created"),
+        @ApiResponse(responseCode = "400", description = "Validation failed for one or more fields"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - authentication required"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - requires ADMIN role")
+    })
+    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.registerUser(request));
     }
 
     /**

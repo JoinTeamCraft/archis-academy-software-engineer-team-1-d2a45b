@@ -6,13 +6,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tech.lokum.parkinglot.dto.PageResponse;
+import tech.lokum.parkinglot.dto.RegisterRequest;
 import tech.lokum.parkinglot.dto.UserResponse;
 import tech.lokum.parkinglot.entity.Role;
 import tech.lokum.parkinglot.entity.User;
 import tech.lokum.parkinglot.exception.BadRequestException;
 import tech.lokum.parkinglot.exception.ConflictException;
 import tech.lokum.parkinglot.exception.ResourceNotFoundException;
+import tech.lokum.parkinglot.exception.ValidationException;
 import tech.lokum.parkinglot.repository.UserRepository;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Service for managing user entities, roles, and administrative operations.
@@ -84,6 +89,57 @@ public class UserService {
                 passwordEncoder.encode(rawPassword),
                 fullName != null ? fullName.trim() : "",
                 phone != null ? phone.trim() : null,
+                assignedRole
+        );
+
+        User saved = userRepository.save(user);
+        return UserResponse.fromEntity(saved);
+    }
+
+    /**
+     * Registers a new user with custom validation logic for unique username and password strength.
+     */
+    @Transactional
+    public UserResponse registerUser(RegisterRequest request) {
+        if (request == null) {
+            throw new BadRequestException("Registration payload is required");
+        }
+
+        List<String> validationDetails = new ArrayList<>();
+
+        String username = request.username() != null ? request.username().trim() : null;
+        String email = request.email() != null ? request.email().trim().toLowerCase() : null;
+        String password = request.password();
+
+        if (username == null || username.isBlank()) {
+            validationDetails.add("Username is required");
+        } else if (userRepository.existsByUsernameIgnoreCase(username) || userRepository.existsByEmailIgnoreCase(username)) {
+            validationDetails.add("Username must be unique");
+        }
+
+        if (email == null || email.isBlank()) {
+            validationDetails.add("Email is required");
+        } else if (userRepository.existsByEmailIgnoreCase(email)) {
+            validationDetails.add("Email must be unique");
+        }
+
+        if (password == null || password.isBlank()) {
+            validationDetails.add("Password is required");
+        } else if (password.length() < 8) {
+            validationDetails.add("Password must contain at least 8 characters");
+        }
+
+        if (!validationDetails.isEmpty()) {
+            throw new ValidationException(validationDetails);
+        }
+
+        Role assignedRole = request.role() != null ? request.role() : Role.USER;
+        User user = new User(
+                username,
+                email,
+                passwordEncoder.encode(password),
+                request.fullName() != null ? request.fullName().trim() : "",
+                request.phoneNumber() != null ? request.phoneNumber().trim() : null,
                 assignedRole
         );
 

@@ -25,6 +25,9 @@ import java.util.List;
 )
 public class User extends BaseEntity {
 
+    @Column(name = "username", length = 50)
+    private String username;
+
     @Column(name = "email", nullable = false, unique = true, length = 120)
     private String email;
 
@@ -54,12 +57,25 @@ public class User extends BaseEntity {
     }
 
     public User(String email, String password, String fullName, String phoneNumber, Role role) {
+        this(null, email, password, fullName, phoneNumber, role);
+    }
+
+    public User(String username, String email, String password, String fullName, String phoneNumber, Role role) {
+        this.username = username;
         this.email = email;
         this.password = password;
         this.fullName = fullName;
         this.phoneNumber = phoneNumber;
         this.role = role != null ? role : Role.CUSTOMER;
         this.active = true;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public void addVehicle(Vehicle vehicle) {

@@ -3,6 +3,7 @@ package tech.lokum.parkinglot.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,7 +16,7 @@ public record ErrorResponse(
     Instant timestamp,
 
     @Schema(description = "HTTP status code", example = "400")
-    int status,
+    Integer status,
 
     @Schema(description = "HTTP status reason or error category", example = "Bad Request")
     String error,
@@ -27,13 +28,25 @@ public record ErrorResponse(
     String path,
 
     @Schema(description = "Field-level validation error details when applicable")
-    Map<String, String> validationErrors
+    Map<String, String> validationErrors,
+
+    @Schema(description = "Detailed list of validation or error messages")
+    List<String> details
 ) {
     public static ErrorResponse of(int status, String error, String message, String path) {
-        return new ErrorResponse(Instant.now(), status, error, message, path, null);
+        return new ErrorResponse(Instant.now(), status, error, message, path, null, null);
     }
 
     public static ErrorResponse of(int status, String error, String message, String path, Map<String, String> validationErrors) {
-        return new ErrorResponse(Instant.now(), status, error, message, path, validationErrors);
+        List<String> details = validationErrors != null ? List.copyOf(validationErrors.values()) : null;
+        return new ErrorResponse(Instant.now(), status, error, message, path, validationErrors, details);
+    }
+
+    public static ErrorResponse of(int status, String error, String message, String path, Map<String, String> validationErrors, List<String> details) {
+        return new ErrorResponse(Instant.now(), status, error, message, path, validationErrors, details);
+    }
+
+    public static ErrorResponse validation(String error, List<String> details) {
+        return new ErrorResponse(null, null, error, null, null, null, details);
     }
 }

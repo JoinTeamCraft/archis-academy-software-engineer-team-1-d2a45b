@@ -31,6 +31,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailIgnoreCase(String email);
 
     /**
+     * Finds a user by username (case-insensitive).
+     */
+    Optional<User> findByUsernameIgnoreCase(String username);
+
+    default Optional<User> findByUsername(String username) {
+        return findByUsernameIgnoreCase(username);
+    }
+
+    /**
+     * Checks if a user already exists with the given username (case-insensitive).
+     */
+    boolean existsByUsernameIgnoreCase(String username);
+
+    /**
      * Retrieves all users with a specific role.
      */
     List<User> findByRole(Role role);
