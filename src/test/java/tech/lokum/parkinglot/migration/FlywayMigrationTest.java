@@ -94,6 +94,7 @@ class FlywayMigrationTest {
         assertTrue(tables.contains("reservations"), "Table 'reservations' should exist");
         assertTrue(tables.contains("payments"), "Table 'payments' should exist");
         assertTrue(tables.contains("report_metadata"), "Table 'report_metadata' should exist");
+        assertTrue(tables.contains("feedback"), "Table 'feedback' should exist");
         assertTrue(tables.contains("flyway_schema_history"), "Table 'flyway_schema_history' should exist");
     }
 }

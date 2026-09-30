@@ -99,6 +99,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/manager/**").hasAnyRole("ADMIN", "MANAGER")
                         // Reports endpoints: accessible only by authorized roles (ADMIN, MANAGER, OPERATOR)
                         .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "MANAGER", "OPERATOR")
+                        // Feedback is tied to a user, so the caller must be logged in
+                        .requestMatchers(HttpMethod.POST, "/api/feedback").authenticated()
 
                         // Permit other existing endpoints for backwards compatibility with previous tickets
                         .anyRequest().permitAll()

@@ -84,6 +84,7 @@ public class OpenApiConfig {
                         new Tag().name("Reservations").description("Spot booking, rescheduling, and reservation lifecycles"),
                         new Tag().name("Payments").description("Payment initiation, verification, and Stripe webhooks"),
                         new Tag().name("Reports").description("Analytical reports (User Activity, Booking Trends, Payment Summaries)"),
+                        new Tag().name("Feedback").description("User feedback about the application or service"),
                         new Tag().name("System Status").description("System heartbeat and service health monitoring")
                 ))
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH))

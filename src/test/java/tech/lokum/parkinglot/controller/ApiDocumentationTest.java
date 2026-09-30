@@ -44,6 +44,7 @@ class ApiDocumentationTest {
                 .andExpect(jsonPath("$.tags[*].name").value(hasItem("Reservations")))
                 .andExpect(jsonPath("$.tags[*].name").value(hasItem("Payments")))
                 .andExpect(jsonPath("$.tags[*].name").value(hasItem("Reports")))
+                .andExpect(jsonPath("$.tags[*].name").value(hasItem("Feedback")))
                 .andExpect(jsonPath("$.tags[*].name").value(hasItem("System Status")))
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth").exists())
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.type").value("http"))
@@ -54,6 +55,7 @@ class ApiDocumentationTest {
                 .andExpect(jsonPath("$.paths['/api/reservations']").exists())
                 .andExpect(jsonPath("$.paths['/api/payments']").exists())
                 .andExpect(jsonPath("$.paths['/api/reports']").exists())
+                .andExpect(jsonPath("$.paths['/api/feedback']").exists())
                 .andExpect(jsonPath("$.paths['/api/users']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/status']").exists());
     }
