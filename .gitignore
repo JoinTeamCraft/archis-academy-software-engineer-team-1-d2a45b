@@ -8,6 +8,9 @@ bin/
 *.iml
 .vscode/
 .DS_Store
+.project
+.classpath
+.settings/
 
 .env
 *.log
