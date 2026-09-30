@@ -7,17 +7,22 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tech.lokum.parkinglot.dto.PaymentInitiateRequest;
+import tech.lokum.parkinglot.dto.PaymentInitiateResponse;
 import tech.lokum.parkinglot.dto.PaymentNotificationRequest;
 import tech.lokum.parkinglot.dto.PaymentNotificationResponse;
 import tech.lokum.parkinglot.dto.PaymentResponse;
+import tech.lokum.parkinglot.dto.PaymentWebhookResponse;
 import tech.lokum.parkinglot.entity.PaymentMethod;
 import tech.lokum.parkinglot.entity.PaymentStatus;
 import tech.lokum.parkinglot.exception.BadRequestException;
 import tech.lokum.parkinglot.exception.GlobalExceptionHandler;
 import tech.lokum.parkinglot.exception.ResourceNotFoundException;
+import tech.lokum.parkinglot.gateway.PaymentGatewayType;
 import tech.lokum.parkinglot.service.PaymentService;
 
 import java.math.BigDecimal;
@@ -238,5 +243,93 @@ class PaymentControllerTest {
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.message").value("Payment not found with id: '999'"));
+    }
+
+    @Test
+    @DisplayName("POST /api/payments/initiate should return 201 Created with client secret")
+    void shouldInitiatePaymentSuccessfully() throws Exception {
+        PaymentInitiateResponse response = new PaymentInitiateResponse(
+            301L,
+            501L,
+            BigDecimal.valueOf(25.00),
+            "USD",
+            PaymentStatus.PENDING,
+            PaymentMethod.CREDIT_CARD,
+            PaymentGatewayType.STRIPE,
+            "pi_mock_123",
+            "pi_mock_123_secret_xyz",
+            "Payment initiated successfully"
+        );
+
+        when(paymentService.initiatePayment(any(PaymentInitiateRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/payments/initiate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "reservationId": 501,
+                        "amount": 25.00,
+                        "currency": "USD",
+                        "paymentMethod": "CREDIT_CARD",
+                        "gatewayType": "STRIPE"
+                    }
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.paymentId").value(301))
+            .andExpect(jsonPath("$.reservationId").value(501))
+            .andExpect(jsonPath("$.clientSecret").value("pi_mock_123_secret_xyz"))
+            .andExpect(jsonPath("$.transactionId").value("pi_mock_123"))
+            .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    @DisplayName("POST /api/payments/initiate should return 400 Bad Request when reservationId is null")
+    void shouldReturn400WhenInitiateMissingReservationId() throws Exception {
+        mockMvc.perform(post("/api/payments/initiate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "amount": 25.00
+                    }
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("POST /api/payments/{paymentId}/verify should return 200 OK with updated payment")
+    void shouldVerifyPaymentSuccessfully() throws Exception {
+        PaymentResponse response = new PaymentResponse(
+            301L,
+            501L,
+            BigDecimal.valueOf(25.00),
+            PaymentMethod.CREDIT_CARD,
+            "USD",
+            PaymentStatus.SUCCESS,
+            "pi_mock_123"
+        );
+
+        when(paymentService.verifyPayment(301L)).thenReturn(response);
+
+        mockMvc.perform(post("/api/payments/301/verify")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.paymentId").value(301))
+            .andExpect(jsonPath("$.status").value("SUCCESS"));
+    }
+
+    @Test
+    @DisplayName("POST /api/payments/webhook should return 200 OK with webhook processing confirmation")
+    void shouldHandleWebhookSuccessfully() throws Exception {
+        when(paymentService.handleWebhook(any(), any()))
+            .thenReturn(PaymentWebhookResponse.processed("Processed event"));
+
+        mockMvc.perform(post("/api/payments/webhook")
+                .header("Stripe-Signature", "sig_header")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"type\":\"payment_intent.succeeded\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.received").value(true))
+            .andExpect(jsonPath("$.status").value("processed"));
     }
 }
