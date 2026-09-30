@@ -1,0 +1,21 @@
+=======================================================
+PARKING LOT SYSTEM - REGISTRATION CONFIRMATION
+=======================================================
+
+Hello {{fullName}},
+
+Thank you for creating an account with the Parking Lot Management System!
+Your registration has been completed successfully.
+
+--- ACCOUNT DETAILS ---
+Username: {{username}}
+Email:    {{email}}
+Role:     {{role}}
+
+You can now log in to reserve and manage parking spots across all locations.
+
+If you have any questions or did not authorize this registration, please contact our support team at {{supportEmail}}.
+
+Best regards,
+The Parking Lot System Team
+(c) {{year}} Parking Lot System. All rights reserved.

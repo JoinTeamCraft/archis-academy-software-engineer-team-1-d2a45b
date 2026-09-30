@@ -23,6 +23,9 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import tech.lokum.parkinglot.config.CorsProperties;
 import tech.lokum.parkinglot.dto.ErrorResponse;
 
 /**
@@ -60,9 +63,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            JwtAuthenticationFilter jwtAuthenticationFilter
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            CorsProperties corsProperties
     ) throws Exception {
         return http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource(corsProperties)))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .securityContext(context -> context.securityContextRepository(new org.springframework.security.web.context.RequestAttributeSecurityContextRepository()))
@@ -74,15 +79,20 @@ public class SecurityConfig {
                         // Public endpoints: Auth, API documentation, Actuator, Health, Error testing
                         .requestMatchers(
                                 "/api/auth/**",
+                                "/api-docs/**",
+                                "/api-docs",
                                 "/v3/api-docs/**",
+                                "/v3/api-docs",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
+                                "/docs/**",
+                                "/docs",
                                 "/actuator/**",
                                 "/api/status",
                                 "/test/**"
                         ).permitAll()
                         // Public payment notification webhook from external gateways
-                        .requestMatchers(HttpMethod.POST, "/api/payments/notifications").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payments/notifications", "/api/payments/webhook").permitAll()
 
                         // Role-based security rules
                         // Only admins can delete users
@@ -92,6 +102,8 @@ public class SecurityConfig {
                         // Admin-specific endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/manager/**").hasAnyRole("ADMIN", "MANAGER")
+                        // Reports endpoints: accessible only by authorized roles (ADMIN, MANAGER, OPERATOR)
+                        .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "MANAGER", "OPERATOR")
 
                         // Permit other existing endpoints for backwards compatibility with previous tickets
                         .anyRequest().permitAll()
@@ -160,5 +172,12 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", corsProperties.toCorsConfiguration());
+        return source;
     }
 }

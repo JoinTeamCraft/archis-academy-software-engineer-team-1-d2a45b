@@ -1,0 +1,24 @@
+=======================================================
+PARKING LOT SYSTEM - PAYMENT RECEIPT
+=======================================================
+
+Hello {{fullName}},
+
+Thank you for your payment! Here is the receipt for your recent transaction.
+
+--- RECEIPT SUMMARY ---
+Payment ID:     #{{paymentId}}
+Transaction ID: {{transactionId}}
+Reservation ID: #{{reservationId}}
+Payment Method: {{paymentMethod}}
+Status:         {{paymentStatus}}
+Paid At:        {{paidAt}}
+Total Amount:   {{amount}} {{currency}}
+
+This payment has been successfully credited towards your parking reservation.
+
+Need help or have questions regarding this charge? Contact us at {{supportEmail}}.
+
+Best regards,
+The Parking Lot System Team
+(c) {{year}} Parking Lot System. All rights reserved.
