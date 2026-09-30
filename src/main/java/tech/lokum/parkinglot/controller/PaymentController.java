@@ -12,35 +12,132 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import tech.lokum.parkinglot.dto.ErrorResponse;
+import tech.lokum.parkinglot.dto.PaymentInitiateRequest;
+import tech.lokum.parkinglot.dto.PaymentInitiateResponse;
 import tech.lokum.parkinglot.dto.PaymentNotificationRequest;
 import tech.lokum.parkinglot.dto.PaymentNotificationResponse;
 import tech.lokum.parkinglot.dto.PaymentResponse;
+import tech.lokum.parkinglot.dto.PaymentWebhookResponse;
 import tech.lokum.parkinglot.entity.PaymentStatus;
 import tech.lokum.parkinglot.service.PaymentService;
 
 import java.util.List;
 
 /**
- * REST controller for payment queries and billing details.
+ * REST controller for payment queries, gateway initiation, verification, and webhooks.
  */
 @RestController
 @RequestMapping("/api/payments")
-@Tag(name = "Payments", description = "Endpoints for retrieving payment details and transaction history")
+@Tag(name = "Payments", description = "Endpoints for payment initiation, status checks, verification, and external gateway webhooks")
 public class PaymentController {
 
     private final PaymentService paymentService;
 
     public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
+    }
+
+    /**
+     * Initiates a payment session with an external payment gateway (e.g., Stripe, PayPal).
+     *
+     * @param request initiation payload
+     * @return 201 Created with client secret token for front-end completion
+     */
+    @PostMapping("/initiate")
+    @Operation(
+        summary = "Initiate external gateway payment",
+        description = "Initializes a payment intent or transaction with an external gateway (e.g. Stripe) and returns tokenized client secret."
+    )
+    @ApiResponse(
+        responseCode = "201",
+        description = "Payment initiated successfully",
+        content = @Content(schema = @Schema(implementation = PaymentInitiateResponse.class))
+    )
+    @ApiResponse(
+        responseCode = "400",
+        description = "Invalid payment initiation parameters",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    @ApiResponse(
+        responseCode = "404",
+        description = "Reservation not found",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    public ResponseEntity<PaymentInitiateResponse> initiatePayment(
+        @Valid @RequestBody PaymentInitiateRequest request
+    ) {
+        PaymentInitiateResponse response = paymentService.initiatePayment(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Verifies payment status directly with the gateway and synchronizes the internal payment record.
+     *
+     * @param paymentId unique payment identifier
+     * @return 200 OK with refreshed payment details
+     */
+    @PostMapping("/{paymentId}/verify")
+    @Operation(
+        summary = "Verify payment status with gateway",
+        description = "Queries the external payment gateway to verify and synchronize the latest payment state."
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Payment status verified successfully",
+        content = @Content(schema = @Schema(implementation = PaymentResponse.class))
+    )
+    @ApiResponse(
+        responseCode = "400",
+        description = "Invalid payment ID supplied",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    @ApiResponse(
+        responseCode = "404",
+        description = "Payment not found",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+    )
+    public ResponseEntity<PaymentResponse> verifyPayment(
+        @Parameter(description = "ID of the payment to verify", example = "301")
+        @PathVariable Long paymentId
+    ) {
+        PaymentResponse response = paymentService.verifyPayment(paymentId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Receives and processes asynchronous webhook callbacks from external payment gateways (e.g. Stripe).
+     *
+     * @param stripeSignature cryptographic signature header from Stripe
+     * @param payload raw webhook payload body
+     * @return 200 OK with processing confirmation
+     */
+    @PostMapping("/webhook")
+    @Operation(
+        summary = "External gateway webhook callback",
+        description = "Receives signed webhook notifications from external payment gateways to record asynchronous payment completions."
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Webhook received and processed",
+        content = @Content(schema = @Schema(implementation = PaymentWebhookResponse.class))
+    )
+    public ResponseEntity<PaymentWebhookResponse> handleWebhook(
+        @RequestHeader(value = "Stripe-Signature", required = false) String stripeSignature,
+        @RequestBody String payload
+    ) {
+        PaymentWebhookResponse response = paymentService.handleWebhook(payload, stripeSignature);
+        return ResponseEntity.ok(response);
     }
 
     /**
