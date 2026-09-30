@@ -99,4 +99,20 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
         @Param("confirmationNumber") String confirmationNumber,
         @Param("paidAt") Instant paidAt
     );
+
+    /**
+     * Retrieves payments with reservation details for reporting.
+     */
+    @Query("""
+        SELECT p FROM Payment p
+        LEFT JOIN FETCH p.reservation r
+        LEFT JOIN FETCH r.user u
+        WHERE (:startDate IS NULL OR p.createdAt >= :startDate)
+          AND (:endDate IS NULL OR p.createdAt <= :endDate)
+        ORDER BY p.createdAt DESC
+    """)
+    List<Payment> findPaymentsForReport(
+        @Param("startDate") Instant startDate,
+        @Param("endDate") Instant endDate
+    );
 }

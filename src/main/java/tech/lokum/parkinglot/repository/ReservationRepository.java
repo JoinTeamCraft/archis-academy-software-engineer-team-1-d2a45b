@@ -123,4 +123,22 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     @Modifying
     @Query("UPDATE Reservation r SET r.status = :status WHERE r.id = :id")
     int updateStatusById(@Param("id") Long id, @Param("status") ReservationStatus status);
+
+    /**
+     * Retrieves reservations with related associations for reporting.
+     */
+    @Query("""
+        SELECT r FROM Reservation r
+        LEFT JOIN FETCH r.user u
+        LEFT JOIN FETCH r.parkingSpot ps
+        LEFT JOIN FETCH ps.parkingLot pl
+        LEFT JOIN FETCH r.vehicle v
+        WHERE (:startDate IS NULL OR r.startTime >= :startDate)
+          AND (:endDate IS NULL OR r.startTime <= :endDate)
+        ORDER BY r.startTime DESC
+    """)
+    List<Reservation> findReservationsForReport(
+        @Param("startDate") Instant startDate,
+        @Param("endDate") Instant endDate
+    );
 }

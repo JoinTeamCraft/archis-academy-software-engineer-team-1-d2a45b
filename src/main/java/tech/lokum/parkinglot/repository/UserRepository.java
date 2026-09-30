@@ -63,4 +63,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Retrieves a paginated list of all active users.
      */
     Page<User> findByActiveTrue(Pageable pageable);
+
+    /**
+     * Finds users within optional date filters for activity reporting.
+     */
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT u FROM User u
+        WHERE (:startDate IS NULL OR u.createdAt >= :startDate)
+          AND (:endDate IS NULL OR u.createdAt <= :endDate)
+        ORDER BY u.id ASC
+    """)
+    List<User> findUsersForReport(
+        @org.springframework.data.repository.query.Param("startDate") java.time.Instant startDate,
+        @org.springframework.data.repository.query.Param("endDate") java.time.Instant endDate
+    );
 }
