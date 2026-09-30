@@ -45,12 +45,15 @@ public class FeedbackService {
      * @param request feedback payload
      * @param caller the authenticated caller; must be the user in the request, or an admin
      * @return saved feedback
-     * @throws ValidationException if the rating is not between 1 and 5 or the text is blank or too long
+     * @throws ForbiddenException if there is no caller, or the caller submits feedback on behalf of another user
+     * @throws ValidationException if a field is missing, the rating is not between 1 and 5, or the text is blank or too long
      * @throws ResourceNotFoundException if the user does not exist
-     * @throws ForbiddenException if the caller submits feedback on behalf of another user
      */
     @Transactional
     public FeedbackResponse submitFeedback(CreateFeedbackRequest request, Authentication caller) {
+        if (caller == null) {
+            throw new ForbiddenException("You must be logged in to submit feedback");
+        }
         validate(request);
 
         User user = userRepository.findById(request.userId())
@@ -72,7 +75,9 @@ public class FeedbackService {
         if (request.userId() == null) {
             errors.add("User ID is required");
         }
-        if (request.rating() == null || request.rating() < MIN_RATING || request.rating() > MAX_RATING) {
+        if (request.rating() == null) {
+            errors.add("Rating is required");
+        } else if (request.rating() < MIN_RATING || request.rating() > MAX_RATING) {
             errors.add(String.format("Rating must be between %d and %d", MIN_RATING, MAX_RATING));
         }
         String text = request.feedbackText();
@@ -87,9 +92,6 @@ public class FeedbackService {
     }
 
     private boolean isOwnerOrAdmin(User user, Authentication caller) {
-        if (caller == null) {
-            return false;
-        }
         boolean isAdmin = caller.getAuthorities().stream()
             .anyMatch(authority -> Role.ADMIN.getAuthority().equals(authority.getAuthority()));
         return isAdmin || user.getEmail().equalsIgnoreCase(caller.getName());

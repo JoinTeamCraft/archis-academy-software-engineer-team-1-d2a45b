@@ -158,7 +158,7 @@ class FeedbackServiceTest {
         assertThatThrownBy(() -> feedbackService.submitFeedback(request, caller("alice@test.com", Role.CUSTOMER)))
             .isInstanceOf(ValidationException.class)
             .satisfies(ex -> assertThat(detailsOf(ex)).containsExactly(
-                "User ID is required", "Rating must be between 1 and 5", "Feedback text is required"));
+                "User ID is required", "Rating is required", "Feedback text is required"));
     }
 
     @Test
@@ -184,13 +184,33 @@ class FeedbackServiceTest {
     }
 
     @Test
-    @DisplayName("submitFeedback should forbid an anonymous caller")
+    @DisplayName("submitFeedback should forbid an anonymous caller before looking up the user")
     void shouldForbidAnonymousCaller() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
         CreateFeedbackRequest request = new CreateFeedbackRequest(1L, "Great service!", 5);
 
         assertThatThrownBy(() -> feedbackService.submitFeedback(request, null))
             .isInstanceOf(ForbiddenException.class);
+        verifyNoInteractions(userRepository, feedbackRepository);
+    }
+
+    @Test
+    @DisplayName("submitFeedback should forbid an anonymous caller even when the body is invalid")
+    void shouldForbidAnonymousCallerBeforeValidating() {
+        CreateFeedbackRequest request = new CreateFeedbackRequest(null, " ", 9);
+
+        assertThatThrownBy(() -> feedbackService.submitFeedback(request, null))
+            .isInstanceOf(ForbiddenException.class);
+        verifyNoInteractions(userRepository, feedbackRepository);
+    }
+
+    @Test
+    @DisplayName("submitFeedback should report a missing rating separately from an out-of-range one")
+    void shouldRejectMissingRating() {
+        CreateFeedbackRequest request = new CreateFeedbackRequest(1L, "Okay", null);
+
+        assertThatThrownBy(() -> feedbackService.submitFeedback(request, caller("alice@test.com", Role.CUSTOMER)))
+            .isInstanceOf(ValidationException.class)
+            .satisfies(ex -> assertThat(detailsOf(ex)).containsExactly("Rating is required"));
     }
 
     @Test
