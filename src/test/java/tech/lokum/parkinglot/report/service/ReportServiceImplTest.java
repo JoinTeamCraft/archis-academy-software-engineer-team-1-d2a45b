@@ -17,9 +17,14 @@ import tech.lokum.parkinglot.entity.Role;
 import tech.lokum.parkinglot.entity.User;
 import tech.lokum.parkinglot.entity.Vehicle;
 import tech.lokum.parkinglot.entity.VehicleType;
+import tech.lokum.parkinglot.exception.BadRequestException;
+import tech.lokum.parkinglot.exception.ResourceNotFoundException;
 import tech.lokum.parkinglot.repository.PaymentRepository;
 import tech.lokum.parkinglot.repository.ReservationRepository;
 import tech.lokum.parkinglot.repository.UserRepository;
+import tech.lokum.parkinglot.report.dto.ReportRequest;
+import tech.lokum.parkinglot.report.dto.ReportResponse;
+import tech.lokum.parkinglot.report.entity.ReportMetadata;
 import tech.lokum.parkinglot.report.exporter.CsvReportExporter;
 import tech.lokum.parkinglot.report.exporter.PdfReportExporter;
 import tech.lokum.parkinglot.report.model.BookingTrendsReportData;
@@ -28,11 +33,13 @@ import tech.lokum.parkinglot.report.model.PaymentSummaryReportData;
 import tech.lokum.parkinglot.report.model.ReportFormat;
 import tech.lokum.parkinglot.report.model.ReportType;
 import tech.lokum.parkinglot.report.model.UserActivityReportData;
+import tech.lokum.parkinglot.report.repository.ReportMetadataRepository;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -51,6 +58,9 @@ class ReportServiceImplTest {
     @Mock
     private PaymentRepository paymentRepository;
 
+    @Mock
+    private ReportMetadataRepository reportMetadataRepository;
+
     private CsvReportExporter csvExporter;
     private PdfReportExporter pdfExporter;
     private ReportServiceImpl reportService;
@@ -67,7 +77,13 @@ class ReportServiceImplTest {
     void setUp() {
         csvExporter = new CsvReportExporter();
         pdfExporter = new PdfReportExporter();
-        reportService = new ReportServiceImpl(userRepository, reservationRepository, paymentRepository, List.of(csvExporter, pdfExporter));
+        reportService = new ReportServiceImpl(
+                userRepository,
+                reservationRepository,
+                paymentRepository,
+                reportMetadataRepository,
+                List.of(csvExporter, pdfExporter)
+        );
 
         alice = new User("alice@example.com", "pass", "Alice Smith", "+123456", Role.CUSTOMER);
         alice.setId(1L);
@@ -190,9 +206,57 @@ class ReportServiceImplTest {
     }
 
     @Test
+    @DisplayName("requestReport should generate report, persist ReportMetadata, and return ReportResponse")
+    void shouldRequestReportSuccessfully() {
+        when(paymentRepository.findPaymentsForReport(any(), any())).thenReturn(List.of(payment));
+        when(reportMetadataRepository.save(any(ReportMetadata.class))).thenAnswer(inv -> {
+            ReportMetadata rm = inv.getArgument(0);
+            rm.setId(123L);
+            return rm;
+        });
+
+        ReportRequest request = new ReportRequest("monthlyRevenue", "2025-01-01", "2025-01-31", "CSV");
+        ReportResponse response = reportService.requestReport(request, "admin@example.com");
+
+        assertThat(response.getReportId()).isEqualTo(123L);
+        assertThat(response.getStatus()).isEqualTo("generated");
+        assertThat(response.getDownloadLink()).isEqualTo("/api/reports/download/123");
+    }
+
+    @Test
+    @DisplayName("requestReport should throw BadRequestException when reportType is missing or invalid")
+    void shouldThrowBadRequestForInvalidReportType() {
+        assertThatThrownBy(() -> reportService.requestReport(new ReportRequest("", "2025-01-01", "2025-01-31"), "admin"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("reportType is required");
+
+        assertThatThrownBy(() -> reportService.requestReport(new ReportRequest("unknownType", "2025-01-01", "2025-01-31"), "admin"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Unsupported reportType");
+    }
+
+    @Test
+    @DisplayName("getReportMetadata should return metadata or throw ResourceNotFoundException")
+    void shouldGetReportMetadata() {
+        ReportMetadata metadata = new ReportMetadata("monthlyRevenue", "CSV", "generated", "2025-01-01", "2025-01-31", "test.csv", "text/csv", "/api/reports/download/99", "admin", "content".getBytes());
+        metadata.setId(99L);
+
+        when(reportMetadataRepository.findById(99L)).thenReturn(Optional.of(metadata));
+        when(reportMetadataRepository.findById(999L)).thenReturn(Optional.empty());
+
+        ReportMetadata found = reportService.getReportMetadata(99L);
+        assertThat(found.getId()).isEqualTo(99L);
+        assertThat(found.getFileName()).isEqualTo("test.csv");
+
+        assertThatThrownBy(() -> reportService.getReportMetadata(999L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Report not found with id: 999");
+    }
+
+    @Test
     @DisplayName("generateReport should throw IllegalArgumentException when format is missing an exporter")
     void shouldThrowWhenNoExporter() {
-        ReportServiceImpl emptyService = new ReportServiceImpl(userRepository, reservationRepository, paymentRepository, List.of());
+        ReportServiceImpl emptyService = new ReportServiceImpl(userRepository, reservationRepository, paymentRepository, reportMetadataRepository, List.of());
 
         assertThatThrownBy(() -> emptyService.generateUserActivityReport(null, null, ReportFormat.PDF))
                 .isInstanceOf(IllegalArgumentException.class)
