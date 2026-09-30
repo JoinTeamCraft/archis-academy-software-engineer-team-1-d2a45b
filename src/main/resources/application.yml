@@ -18,6 +18,25 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+        # Queries slower than this are logged at INFO by org.hibernate.SQL_SLOW. 0 turns it off.
+        log_slow_query: ${DB_SLOW_QUERY_MS:500}
+
+logging:
+  file:
+    name: ${LOG_FILE:logs/parking-lot.log}
+  logback:
+    rollingpolicy:
+      # Roll daily or at max-file-size, gzip old files, and delete the oldest past either limit.
+      max-file-size: ${LOG_MAX_FILE_SIZE:10MB}
+      max-history: ${LOG_MAX_HISTORY:14}
+      total-size-cap: ${LOG_TOTAL_SIZE_CAP:1GB}
+  level:
+    root: ${LOG_LEVEL:INFO}
+    tech.lokum.parkinglot: ${LOG_LEVEL_APP:INFO}
+    # DEBUG prints every SQL statement. Never enable org.hibernate.orm.jdbc.bind: it prints bound
+    # values, including password hashes.
+    org.hibernate.SQL: ${LOG_LEVEL_SQL:INFO}
+    org.hibernate.SQL_SLOW: INFO
 
 server:
   port: ${PORT:8080}
