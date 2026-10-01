@@ -6,3 +6,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+
+logging:
+  file:
+    # Keep test logs out of the project's logs/ folder.
+    name: build/test-logs/parking-lot.log
