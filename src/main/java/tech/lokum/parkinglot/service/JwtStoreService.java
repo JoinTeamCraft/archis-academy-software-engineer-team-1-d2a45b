@@ -63,4 +63,10 @@ public class JwtStoreService {
     public Set<String> getAllUsers() {
         return tokenStore.keySet();
     }
+
+    public void revokeToken(String token) {
+
+        tokenStore.entrySet()
+                .removeIf(entry -> entry.getValue().equals(token));
+    }
 }

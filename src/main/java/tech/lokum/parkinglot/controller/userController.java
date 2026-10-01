@@ -1,6 +1,7 @@
 package tech.lokum.parkinglot.controller;
 
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -64,4 +65,15 @@ public class userController {
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(
+            HttpServletRequest request) {
+
+        authService.logout(request);
+
+        return ResponseEntity.ok(
+                Map.of("message", "Logout successful."));
+    }
+
 }
